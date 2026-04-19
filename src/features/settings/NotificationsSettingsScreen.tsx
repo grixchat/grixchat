@@ -1,26 +1,78 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Bell, MessageSquare, Phone, Users, Volume2, Vibrate, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, MessageSquare, Phone, Users, Volume2, Vibrate, ChevronRight, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SettingHeader from '../../components/layout/SettingHeader.tsx';
+import { useAuth } from '../../providers/AuthProvider';
+import { db } from '../../services/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function NotificationsSettingsScreen() {
+  const { user, userData } = useAuth();
   const navigate = useNavigate();
   
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+
   const [settings, setSettings] = useState({
-    conversationTones: true,
-    highPriority: true,
-    reactionNotifications: true,
-    groupHighPriority: true,
+    conversationTones: userData?.settings?.notifications?.conversationTones ?? true,
+    highPriority: userData?.settings?.notifications?.highPriority ?? true,
+    reactionNotifications: userData?.settings?.notifications?.reactionNotifications ?? true,
+    groupHighPriority: userData?.settings?.notifications?.groupHighPriority ?? true,
+    vibrate: userData?.settings?.notifications?.vibrate ?? true,
   });
 
-  const toggleSetting = (key: keyof typeof settings) => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    if (userData?.settings?.notifications) {
+      setSettings(prev => ({
+        ...prev,
+        ...userData.settings?.notifications
+      }));
+    }
+  }, [userData]);
+
+  const updateServerSettings = async (newSettings: any) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        'settings.notifications': newSettings
+      });
+    } catch (e) {
+      console.error('Failed to update notification settings:', e);
+    }
   };
 
-  const Toggle = ({ active, onClick }: { active: boolean, onClick: () => void }) => (
+  const toggleSetting = (key: keyof typeof settings) => {
+    const newSettings = { ...settings, [key]: !settings[key] };
+    setSettings(newSettings);
+    updateServerSettings(newSettings);
+  };
+
+  const handleMasterToggle = async () => {
+    if (typeof Notification === 'undefined') {
+      alert("This browser doesn't support notifications");
+      return;
+    }
+
+    if (permission === 'granted') {
+      // Logic for "disabling" can't revoke browser permission, but we can set a flag
+      alert("Browser level permission is already granted. To revoke, use browser site settings.");
+      return;
+    }
+
+    const result = await Notification.requestPermission();
+    setPermission(result);
+    
+    if (result === 'denied') {
+      alert("Notifications are blocked by browser. Please enable them in your browser settings to receive alerts.");
+    }
+  };
+
+  const Toggle = ({ active, onClick, disabled = false }: { active: boolean, onClick: () => void, disabled?: boolean }) => (
     <button 
       onClick={onClick}
-      className={`w-10 h-5 rounded-full transition-all relative ${active ? 'bg-primary' : 'bg-zinc-300'}`}
+      disabled={disabled}
+      className={`w-10 h-5 rounded-full transition-all relative ${active ? 'bg-[var(--primary)]' : 'bg-zinc-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${active ? 'right-0.5' : 'left-0.5'}`} />
     </button>
@@ -30,19 +82,49 @@ export default function NotificationsSettingsScreen() {
     <div className="h-full flex flex-col bg-[var(--bg-main)] overflow-hidden">
       <SettingHeader title="Notifications" />
 
-      <div className="flex-1 overflow-y-auto no-scrollbar py-6">
-        <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mb-6">
-          <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+        {/* Master Permission Section */}
+        <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mt-6 mb-6">
+          <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
-                <Volume2 size={20} />
+              <div className={`p-2 rounded-lg ${permission === 'granted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
+                <Bell size={20} />
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-[var(--text-primary)]">Conversation tones</h4>
-                <p className="text-[11px] text-[var(--text-secondary)]">Play sounds for incoming messages</p>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-[var(--text-primary)]">Allow Notifications</h4>
+                <p className="text-[11px] text-[var(--text-secondary)]">Receive push alerts for messages and calls</p>
+                {permission === 'denied' && (
+                  <div className="flex items-center gap-1 mt-1 text-rose-500">
+                    <AlertCircle size={10} />
+                    <span className="text-[9px] font-bold uppercase tracking-tight">Blocked by browser</span>
+                  </div>
+                )}
+                {permission === 'granted' && (
+                  <div className="flex items-center gap-1 mt-1 text-emerald-500">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[9px] font-bold uppercase tracking-tight">System permission granted</span>
+                  </div>
+                )}
               </div>
             </div>
-            <Toggle active={settings.conversationTones} onClick={() => toggleSetting('conversationTones')} />
+            <Toggle 
+              active={permission === 'granted'} 
+              onClick={handleMasterToggle} 
+            />
+          </div>
+        </div>
+
+        <div className="px-6 mb-4">
+          <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 flex gap-3">
+             <Volume2 size={16} className="text-blue-500 shrink-0 mt-0.5" />
+             <div>
+                <p className="text-[11px] font-bold text-blue-900 leading-tight">Conversation Tones</p>
+                <p className="text-[10px] text-blue-700/70 mt-0.5">Control sounds for incoming and outgoing messages while you're in a chat.</p>
+                <div className="mt-3 flex items-center justify-between bg-white/50 rounded-lg p-2">
+                   <span className="text-[10px] font-medium text-blue-900">Enable Tones</span>
+                   <Toggle active={settings.conversationTones} onClick={() => toggleSetting('conversationTones')} />
+                </div>
+             </div>
           </div>
         </div>
 
@@ -50,35 +132,37 @@ export default function NotificationsSettingsScreen() {
         <h3 className="px-6 mb-2 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">MESSAGES</h3>
         <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mb-6">
           <button className="w-full flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-left">
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Bell size={20} />
               </div>
-              <div className="text-left">
+              <div>
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">Notification tone</h4>
                 <p className="text-[11px] text-[var(--text-secondary)]">Default (Skyline)</p>
               </div>
             </div>
             <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-40" />
           </button>
-          <button className="w-full flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
+          
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
             <div className="flex items-center gap-4">
               <div className="p-2 rounded-lg bg-zinc-500/10 text-zinc-500">
                 <Vibrate size={20} />
               </div>
-              <div className="text-left">
+              <div>
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">Vibrate</h4>
-                <p className="text-[11px] text-[var(--text-secondary)]">Default</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">Haptic feedback on alert</p>
               </div>
             </div>
-            <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-40" />
-          </button>
+            <Toggle active={settings.vibrate} onClick={() => toggleSetting('vibrate')} />
+          </div>
+
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
                 <MessageSquare size={20} />
               </div>
-              <div>
+              <div className="text-left">
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">High priority notifications</h4>
                 <p className="text-[11px] text-[var(--text-secondary)]">Show previews at top of screen</p>
               </div>
@@ -91,11 +175,11 @@ export default function NotificationsSettingsScreen() {
         <h3 className="px-6 mb-2 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">GROUPS</h3>
         <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mb-6">
           <button className="w-full flex items-center justify-between px-6 py-4 border-b border-[var(--border-color)]">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-left">
               <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
                 <Users size={20} />
               </div>
-              <div className="text-left">
+              <div>
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">Group notification tone</h4>
                 <p className="text-[11px] text-[var(--text-secondary)]">Default (Breeze)</p>
               </div>
@@ -104,10 +188,10 @@ export default function NotificationsSettingsScreen() {
           </button>
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
                 <MessageSquare size={20} />
               </div>
-              <div>
+              <div className="text-left">
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">High priority notifications</h4>
                 <p className="text-[11px] text-[var(--text-secondary)]">Show previews at top of screen</p>
               </div>
@@ -120,11 +204,11 @@ export default function NotificationsSettingsScreen() {
         <h3 className="px-6 mb-2 text-[11px] font-bold text-zinc-400 uppercase tracking-wider">CALLS</h3>
         <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)]">
           <button className="w-full flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+            <div className="flex items-center gap-4 text-left">
+              <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
                 <Phone size={20} />
               </div>
-              <div className="text-left">
+              <div>
                 <h4 className="text-sm font-bold text-[var(--text-primary)]">Ringtone</h4>
                 <p className="text-[11px] text-[var(--text-secondary)]">Default (GrixChat)</p>
               </div>
@@ -132,7 +216,15 @@ export default function NotificationsSettingsScreen() {
             <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-40" />
           </button>
         </div>
+        
+        <div className="p-8 text-center">
+            <p className="text-[10px] text-zinc-400 leading-relaxed max-w-[200px] mx-auto uppercase tracking-widest font-black">
+                GrixCloud Push v2.4.0 <br/>
+                Server Instance: AIS-PRE-442
+            </p>
+        </div>
       </div>
     </div>
   );
 }
+
