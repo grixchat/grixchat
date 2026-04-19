@@ -26,7 +26,19 @@ export default function NotificationHandler() {
         return;
       }
 
+      // Check if we are in an iframe
+      const isIframe = window.self !== window.top;
+      if (isIframe) {
+        console.warn('Notifications often fail in iframes. Please open the app in a new tab for testing.');
+      }
+
       try {
+        const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+        if (!vapidKey) {
+          console.error('VITE_FIREBASE_VAPID_KEY is missing! Notifications will not work.');
+          return;
+        }
+
         let registration;
         if ('serviceWorker' in navigator) {
           console.log('Registering Service Worker for FCM...');

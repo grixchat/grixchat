@@ -108,6 +108,11 @@ app.post("/api/send-notification", async (req, res) => {
   }
 
   try {
+    // Check if admin was actually initialized
+    if (!admin.apps.length) {
+      throw new Error('Firebase Admin not initialized. Check FIREBASE_SERVICE_ACCOUNT env var.');
+    }
+
     const response = await admin.messaging().sendEachForMulticast({
       tokens,
       notification: { title, body },
@@ -116,14 +121,16 @@ app.post("/api/send-notification", async (req, res) => {
         notification: {
           icon: '/logo.png',
           badge: '/logo.png',
-          vibrate: [200, 100, 200]
+          vibrate: [200, 100, 200],
+          requireInteraction: true // Keeps notification visible until user clicks
         }
       }
     });
 
+    console.log(`Notification sent to ${tokens.length} devices. Success: ${response.successCount}, Failure: ${response.failureCount}`);
     res.json({ success: true, response });
   } catch (error: any) {
-    console.error('FCM Error:', error);
+    console.error('FCM Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

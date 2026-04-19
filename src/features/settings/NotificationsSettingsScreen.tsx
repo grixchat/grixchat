@@ -48,6 +48,42 @@ export default function NotificationsSettingsScreen() {
     updateServerSettings(newSettings);
   };
 
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const isIframe = window.self !== window.top;
+
+  const sendTestNotification = async () => {
+    if (!userData?.fcmTokens?.length) {
+      alert("No FCM tokens found. Make sure you have allowed notifications and the token is saved in your profile.");
+      return;
+    }
+
+    setIsSendingTest(true);
+    try {
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokens: userData.fcmTokens,
+          title: "Test Notification",
+          body: "Hello! This is a test notification from GrixChat 🚀",
+          data: { type: 'test' }
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Test notification sent successfully! Check your notification panel.");
+      } else {
+        throw new Error(data.error || "Failed to send test notification");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Error: ${e.message}`);
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
   const handleMasterToggle = async () => {
     if (typeof Notification === 'undefined') {
       alert("This browser doesn't support notifications");
@@ -83,8 +119,20 @@ export default function NotificationsSettingsScreen() {
       <SettingHeader title="Notifications" />
 
       <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+        {isIframe && (
+          <div className="px-6 mt-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
+              <AlertCircle size={18} className="text-amber-600 shrink-0" />
+              <p className="text-[11px] text-amber-900 leading-snug">
+                <b>Iframe Detected:</b> Notifications are often blocked in this preview window. 
+                Please <button onClick={() => window.open(window.location.href, '_blank')} className="font-bold underline">Open in a New Tab</button> to enable them.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Master Permission Section */}
-        <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mt-6 mb-6">
+        <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mt-6 mb-4">
           <div className="flex items-center justify-between px-6 py-5">
             <div className="flex items-center gap-4">
               <div className={`p-2 rounded-lg ${permission === 'granted' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-zinc-500/10 text-zinc-500'}`}>
@@ -113,6 +161,18 @@ export default function NotificationsSettingsScreen() {
             />
           </div>
         </div>
+
+        {permission === 'granted' && (
+          <div className="px-6 mb-6">
+            <button 
+              onClick={sendTestNotification}
+              disabled={isSendingTest}
+              className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 rounded-lg text-[11px] font-bold uppercase tracking-wider text-zinc-600 transition-colors disabled:opacity-50"
+            >
+              {isSendingTest ? 'Sending...' : 'Send Test Notification'}
+            </button>
+          </div>
+        )}
 
         <div className="px-6 mb-4">
           <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 flex gap-3">
