@@ -20,7 +20,7 @@ import { ImageService } from '../../../services/ImageService.ts';
 import { GofileService } from '../services/GofileService.ts';
 import { toDate } from '../../../utils/dateUtils.ts';
 
-export const useChatActions = (chatId: string, receiverId: string, receiver: any) => {
+export const useChatActions = (chatId: string, receiverId: string, receiver: any, receiverActiveChatId: string | null) => {
   
   const sendMessage = useCallback(async ({
     text,
@@ -37,16 +37,21 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
 
     try {
       let fileUrl = '';
-      let fileType: 'text' | 'image' | 'file' = 'text';
+      let fileType: 'text' | 'image' | 'video' | 'file' = 'text';
       let fileName = '';
 
       if (file) {
         fileName = file.name;
         if (file.type.startsWith('image/')) {
+          // Keep ImgBB for images on client if key exists, otherwise server proxy will handle
           fileUrl = await ImageService.uploadImage(file, onProgress);
           fileType = 'image';
+        } else if (file.type.startsWith('video/')) {
+          // Use server proxy for video (Catbox)
+          fileUrl = await GofileService.uploadFile(file);
+          fileType = 'video';
         } else {
-          // Use Gofile for other file types
+          // Use server proxy for other files (Gofile)
           fileUrl = await GofileService.uploadFile(file);
           fileType = 'file';
         }
@@ -56,10 +61,10 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
         chatId,
         senderId: auth.currentUser.uid,
         receiverId,
-        text: text || (fileType === 'file' ? `Sent a file: ${fileName}` : ''),
+        text: text || (fileType === 'file' ? `Sent a file: ${fileName}` : fileType === 'video' ? 'Sent a video' : ''),
         imageUrl: fileType === 'image' ? (fileUrl || null) : null,
-        fileUrl: fileType === 'file' ? (fileUrl || null) : null,
-        fileName: fileType === 'file' ? (fileName || null) : null,
+        fileUrl: (fileType === 'file' || fileType === 'video') ? (fileUrl || null) : null,
+        fileName: (fileType === 'file' || fileType === 'video') ? (fileName || null) : null,
         timestamp: serverTimestamp(),
         isRead: false,
         type: fileType,
@@ -71,14 +76,14 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
       // Update Conversations Collection (Optimized for Chat List)
       const conversationRef = doc(db, "conversations", chatId);
       await setDoc(conversationRef, {
-        lastMessage: messageData.text || 'Sent an image',
+        lastMessage: messageData.text || (fileType === 'image' ? 'Sent an image' : 'Sent a file'),
         lastMessageTimestamp: serverTimestamp(),
         lastSenderId: auth.currentUser.uid,
         participants: [auth.currentUser.uid, receiverId],
         [`unreadCount_${receiverId}`]: increment(1)
       }, { merge: true });
 
-      // Cleanup: Jab messages 50 ho jayein, to oldest 25 delete kar do (Bulk Delete)
+      // Cleanup logic...
       setTimeout(async () => {
         try {
           const messagesRef = collection(db, "messages");
@@ -89,15 +94,13 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           const snapshot = await getDocs(q);
           
           if (snapshot.size >= 50) {
-            // Sort in-memory to avoid composite index
             const docs = [...snapshot.docs].sort((a, b) => {
               const timeA = toDate(a.data().timestamp)?.getTime() || 0;
               const timeB = toDate(b.data().timestamp)?.getTime() || 0;
-              return timeA - timeB; // Ascending (oldest first)
+              return timeA - timeB;
             });
 
             const batch = writeBatch(db);
-            // Sabse purane 25 messages delete karenge (Bulk Delete)
             const oldestMsgs = docs.slice(0, 25);
             oldestMsgs.forEach(doc => batch.delete(doc.ref));
             await batch.commit();
@@ -107,16 +110,26 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
         }
       }, 2000);
 
-      // Send Notification
-      if (receiver?.fcmTokens?.length > 0 && receiverId !== 'gx-ai') {
+      // Send Notification ONLY if receiver is not in THIS chat
+      // Check for receiver tokens and ensure receiver is either offline OR in a different chat
+      const myId = auth.currentUser.uid;
+      const shouldNotify = receiverId !== 'gx-ai' && 
+                           receiver?.fcmTokens?.length > 0 && 
+                           receiverActiveChatId !== myId; // receiverActiveChatId is the ID of the user the receiver is CURRENTLY chatting with
+
+      if (shouldNotify) {
         fetch('/api/send-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tokens: receiver.fcmTokens,
-            title: `New message from ${auth.currentUser?.displayName || 'GrixChat User'}`,
-            body: text || 'Sent an image',
-            data: { chatId, senderId: auth.currentUser?.uid }
+            title: `${auth.currentUser?.displayName || 'GrixChat User'}`,
+            body: text || (fileType === 'image' ? 'Sent an image' : fileType === 'video' ? 'Sent a video' : 'Sent a file'),
+            data: { 
+              chatId, 
+              senderId: myId,
+              click_action: '/chats'
+            }
           })
         }).catch(err => console.error('Notification error:', err));
       }
@@ -124,7 +137,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
       console.error("Error sending message:", error);
       throw error;
     }
-  }, [chatId, receiverId, receiver]);
+  }, [chatId, receiverId, receiver, receiverActiveChatId]);
 
   const editMessage = useCallback(async (msgId: string, newText: string) => {
     await updateDoc(doc(db, "messages", msgId), {

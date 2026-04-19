@@ -94,7 +94,7 @@ export default function ChatScreen() {
     deleteMessage: performDeleteMessage, 
     reactToMessage: performReactToMessage, 
     clearChat: performClearChat 
-  } = useChatActions(chatId, receiverId || '', receiver);
+  } = useChatActions(chatId, receiverId || '', receiver, receiverActiveChatId);
 
   const { isOtherTyping, handleTyping } = useTypingStatus(chatId, receiverId || '');
 

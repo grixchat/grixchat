@@ -6,8 +6,28 @@ import multer from "multer";
 import FormData from "form-data";
 import fs from "fs";
 import os from "os";
+import admin from 'firebase-admin';
 
 dotenv.config();
+
+// Initialize Firebase Admin
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('Firebase Admin initialized via service account');
+  } catch (e) {
+    console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT:', e);
+  }
+} else if (process.env.VITE_FIREBASE_PROJECT_ID) {
+  // Fallback: Initialize with project ID (works if running in GCP with default service account)
+  admin.initializeApp({
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID
+  });
+  console.log('Firebase Admin initialized via project ID');
+}
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -79,7 +99,36 @@ app.get("/sitemap.xml", (req, res) => {
 </urlset>`);
 });
 
-// File Upload Proxy to file.io (with Oshi.at fallback)
+// Send Notification Proxy
+app.post("/api/send-notification", async (req, res) => {
+  const { tokens, title, body, data } = req.body;
+  
+  if (!tokens || !tokens.length) {
+    return res.status(400).json({ error: 'No tokens provided' });
+  }
+
+  try {
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      data: data || {},
+      webpush: {
+        notification: {
+          icon: '/logo.png',
+          badge: '/logo.png',
+          vibrate: [200, 100, 200]
+        }
+      }
+    });
+
+    res.json({ success: true, response });
+  } catch (error: any) {
+    console.error('FCM Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// File Upload Proxy (Catbox for images/videos, Gofile.io for others)
 app.post("/api/upload-file", (req, res, next) => {
   upload.single('file')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
@@ -94,72 +143,67 @@ app.post("/api/upload-file", (req, res, next) => {
     return res.status(400).json({ status: 'error', message: 'No file uploaded' });
   }
 
-  // Try file.io first, then fallback to oshi.at
+  const isMedia = req.file.mimetype.startsWith('image/') || req.file.mimetype.startsWith('video/');
+
   try {
-    const form = new FormData();
-    form.append('file', fs.createReadStream(req.file.path), {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype,
-    });
-
-    try {
-      console.log('Attempting upload to file.io...');
-      const response = await axios.post('https://file.io', form, {
-        headers: form.getHeaders(),
-        timeout: 30000,
-      });
-
-      if (response.data && response.data.success) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        return res.json({ 
-          status: 'ok', 
-          downloadUrl: response.data.link,
-          expires: response.data.expiry,
-          provider: 'file.io'
-        });
-      }
-      throw new Error('file.io success was false');
-    } catch (fileIoError: any) {
-      console.warn('file.io failed, trying oshi.at fallback...', fileIoError.message);
-      
-      // Fallback to Oshi.at (Privacy focused, one-time download support)
-      const oshiForm = new FormData();
-      oshiForm.append('f', fs.createReadStream(req.file.path), {
+    if (isMedia) {
+      // Upload to Catbox.moe
+      const form = new FormData();
+      form.append('reqtype', 'fileupload');
+      form.append('fileToUpload', fs.createReadStream(req.file.path), {
         filename: req.file.originalname,
         contentType: req.file.mimetype,
       });
-      // 14 days in minutes = 20160
-      oshiForm.append('expire', '20160');
 
-      const oshiResponse = await axios.post('https://oshi.at', oshiForm, {
-        headers: oshiForm.getHeaders(),
+      console.log('Uploading media to Catbox.moe...');
+      const response = await axios.post('https://catbox.moe/user/api.php', form, {
+        headers: form.getHeaders(),
         timeout: 60000,
       });
 
-      // Oshi.at returns plain text with the link if successful, or HTML on error
-      const oshiData = oshiResponse.data.toString();
-      if (oshiData.includes('https://oshi.at/')) {
-        // Extract the link (it's usually the first URL in the text response)
-        const linkMatch = oshiData.match(/https:\/\/oshi\.at\/[a-zA-Z0-9]+/);
-        const downloadUrl = linkMatch ? linkMatch[0] : null;
-
-        if (downloadUrl) {
-          if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-          return res.json({ 
-            status: 'ok', 
-            downloadUrl: downloadUrl,
-            provider: 'oshi.at'
-          });
-        }
+      if (response.data && typeof response.data === 'string' && response.data.startsWith('http')) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.json({ 
+          status: 'ok', 
+          downloadUrl: response.data.trim(),
+          provider: 'catbox'
+        });
       }
-      
-      throw new Error('Both file.io and oshi.at failed');
+      throw new Error(`Catbox error: ${response.data}`);
+    } else {
+      // Upload to Gofile.io
+      // 1. Get best server
+      console.log('Getting Gofile server...');
+      const serverRes = await axios.get('https://api.gofile.io/getServer');
+      const server = serverRes.data.data.server;
+
+      // 2. Upload
+      const form = new FormData();
+      form.append('file', fs.createReadStream(req.file.path), {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+      });
+
+      console.log(`Uploading file to Gofile server: ${server}...`);
+      const response = await axios.post(`https://${server}.gofile.io/contents/uploadfile`, form, {
+        headers: form.getHeaders(),
+        timeout: 120000, // Gofile can be slow for large files
+      });
+
+      if (response.data && response.data.status === 'ok') {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return res.json({ 
+          status: 'ok', 
+          downloadUrl: response.data.data.downloadPage, // Note: Direct link might require premium for Gofile, so we give download page
+          fileId: response.data.data.fileId,
+          provider: 'gofile'
+        });
+      }
+      throw new Error(`Gofile error: ${JSON.stringify(response.data)}`);
     }
   } catch (error: any) {
-    console.error('Upload proxy exception:', error.message);
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
+    console.error('Upload failed:', error.message);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ status: 'error', message: `Upload failed: ${error.message}` });
   }
 });
