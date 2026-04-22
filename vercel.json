@@ -29,6 +29,10 @@
       "dest": "/sw.js"
     },
     {
+      "src": "/firebase-messaging-sw.js",
+      "dest": "src/server/server.ts"
+    },
+    {
       "src": "/assets/(.*)",
       "dest": "/assets/$1"
     },

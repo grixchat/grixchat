@@ -13,15 +13,12 @@ import { useNavigate } from 'react-router-dom';
 import { LockService } from '../../services/LockService.ts';
 import { motion } from 'motion/react';
 import SettingHeader from '../../components/layout/SettingHeader.tsx';
+import { useAuth } from '../../providers/AuthProvider';
 
 export default function AppLockScreen() {
   const navigate = useNavigate();
-  const [lockData, setLockData] = useState(LockService.getLockData());
-
-  useEffect(() => {
-    const data = LockService.getLockData();
-    setLockData(data);
-  }, []);
+  const { userData } = useAuth();
+  const lockData = LockService.getLockDataFromProfile(userData);
 
   const handleToggleLock = () => {
     if (lockData.isEnabled) {

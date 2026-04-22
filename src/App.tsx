@@ -36,6 +36,9 @@ const HomeTab = React.lazy(() => import('./features/home').then(m => ({ default:
 const ChatLayout = React.lazy(() => import('./features/chat').then(m => ({ default: m.ChatLayout })));
 const ChatScreen = React.lazy(() => import('./features/chat').then(m => ({ default: m.ChatScreen })));
 const MessagesListScreen = React.lazy(() => import('./features/chat').then(m => ({ default: m.MessagesListScreen })));
+const HideChatScreen = React.lazy(() => import('./features/chat').then(m => ({ default: m.HideChatScreen })));
+const ArchivedChatScreen = React.lazy(() => import('./features/chat').then(m => ({ default: m.ArchivedChatScreen })));
+const HideChatSettings = React.lazy(() => import('./features/chat').then(m => ({ default: m.HideChatSettings })));
 const SearchUserScreen = React.lazy(() => import('./features/chat/SearchUserScreen'));
 const GrixAIScreen = React.lazy(() => import('./features/chat/GrixAIScreen'));
 
@@ -60,6 +63,7 @@ const HubTab = React.lazy(() => import('./features/hub').then(m => ({ default: m
 const GithubScreen = React.lazy(() => import('./features/hub/github').then(m => ({ default: m.GithubScreen })));
 const WebIDEScreen = React.lazy(() => import('./features/hub/web-ide/WebIDEScreen'));
 const BrowserScreen = React.lazy(() => import('./features/hub/browser/BrowserScreen'));
+const LudoScreen = React.lazy(() => import('./features/hub/ludo/LudoScreen'));
 const CameraTab = React.lazy(() => import('./features/camera').then(m => ({ default: m.CameraTab })));
 
 const PrivacySettingsScreen = React.lazy(() => import('./features/settings').then(m => ({ default: m.PrivacySettingsScreen })));
@@ -156,7 +160,18 @@ export default function App() {
     }
   }, [location]);
 
-  const [isUnlocked, setIsUnlocked] = useState(!LockService.getLockData().isEnabled);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [initialLockCheckDone, setInitialLockCheckDone] = useState(false);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      const lockData = LockService.getLockDataFromProfile(userData);
+      if (!lockData.isEnabled) {
+        setIsUnlocked(true);
+      }
+      setInitialLockCheckDone(true);
+    }
+  }, [isAuthReady, userData]);
 
   useEffect(() => {
     const loadCount = parseInt(storage.getItem('loadCount') || '0');
@@ -187,7 +202,7 @@ export default function App() {
 
   const loading = !isAuthReady || authLoading || splashLoading;
 
-  if (loading) {
+  if (loading || !initialLockCheckDone) {
     return (
       <SplashScreen />
     );
@@ -224,6 +239,9 @@ export default function App() {
                         <HomeTab />
                       } />
                       <Route path="/chats" element={user ? <ChatsTab /> : <Navigate to="/login" />} />
+                      <Route path="/chats/archived" element={user ? <ArchivedChatScreen /> : <Navigate to="/login" />} />
+                      <Route path="/chats/hidden" element={user ? <HideChatScreen /> : <Navigate to="/login" />} />
+                      <Route path="/chats/hidden/settings" element={user ? <HideChatSettings /> : <Navigate to="/login" />} />
                       <Route path="/hub" element={user ? <HubTab /> : <Navigate to="/login" />} />
                       <Route path="/reels" element={user ? <ReelsTab /> : <Navigate to="/login" />} />
                       <Route element={<ChatLayout />}>
@@ -280,6 +298,7 @@ export default function App() {
                     <Route path="/hub/github" element={user ? <GithubScreen /> : <Navigate to="/login" />} />
                     <Route path="/hub/web-ide" element={user ? <WebIDEScreen /> : <Navigate to="/login" />} />
                     <Route path="/hub/browser" element={user ? <BrowserScreen /> : <Navigate to="/login" />} />
+                    <Route path="/hub/ludo" element={user ? <LudoScreen /> : <Navigate to="/login" />} />
                   </Routes>
                 </React.Suspense>
               </div>

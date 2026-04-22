@@ -1,57 +1,55 @@
 /**
- * LockService handles the local storage logic for the App Lock system.
- * It stores the lock status, type, and credentials locally.
+ * LockService handles the logic for the App Lock system.
+ * It now interacts with Firebase Firestore to ensure the lock is synchronized across devices.
  */
 
-import { storage } from './StorageService';
+import { auth, db } from './firebase.ts';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 export type LockType = 'pin4' | 'pin6' | 'alpha' | null;
 
 interface LockData {
   isEnabled: boolean;
   type: LockType;
-  hash: string | null; // In a real app, this would be hashed. For this demo, we'll store the value.
+  hash: string | null;
 }
 
-const STORAGE_KEY = 'grixchat_app_lock';
-
 export const LockService = {
-  getLockData: (): LockData => {
-    const data = storage.getItem(STORAGE_KEY);
-    if (data) {
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        console.error("Error parsing lock data", e);
-      }
+  // We'll pass the userData from the context to get current lock status instantly
+  getLockDataFromProfile: (profile: any): LockData => {
+    if (profile?.lock) {
+      return profile.lock;
     }
     return { isEnabled: false, type: null, hash: null };
   },
 
-  setLockData: (data: LockData) => {
-    storage.setItem(STORAGE_KEY, JSON.stringify(data));
-  },
-
-  enableLock: (type: LockType, value: string) => {
-    const data: LockData = {
+  enableLock: async (type: LockType, value: string) => {
+    if (!auth.currentUser) return;
+    const lockData: LockData = {
       isEnabled: true,
       type,
       hash: value
     };
-    storage.setItem(STORAGE_KEY, JSON.stringify(data));
+    
+    await updateDoc(doc(db, "users", auth.currentUser.uid), {
+      lock: lockData
+    });
   },
 
-  disableLock: () => {
-    const data: LockData = {
+  disableLock: async () => {
+    if (!auth.currentUser) return;
+    const lockData: LockData = {
       isEnabled: false,
       type: null,
       hash: null
     };
-    storage.setItem(STORAGE_KEY, JSON.stringify(data));
+    
+    await updateDoc(doc(db, "users", auth.currentUser.uid), {
+      lock: lockData
+    });
   },
 
-  verifyLock: (value: string): boolean => {
-    const data = LockService.getLockData();
-    return data.hash === value;
+  verifyLock: (value: string, hash: string | null): boolean => {
+    return hash === value;
   }
 };

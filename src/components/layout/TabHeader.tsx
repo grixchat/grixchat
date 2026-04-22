@@ -9,6 +9,7 @@ import {
   Laptop, 
   Star, 
   Archive,
+  EyeOff,
   Heart,
   Plus,
   LayoutGrid,
@@ -20,8 +21,10 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSearch } from '../../contexts/SearchContext.tsx';
+import { useAuth } from '../../providers/AuthProvider.tsx';
 
 export default function TabHeader() {
+  const { userData } = useAuth();
   const { setIsSearchOpen } = useSearch();
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,7 +47,10 @@ export default function TabHeader() {
     { label: 'New broadcast', icon: UserPlus },
     { label: 'Linked devices', icon: Laptop },
     { label: 'Starred messages', icon: Star },
-    { label: 'Archived', icon: Archive },
+    { label: 'Archived', icon: Archive, path: '/chats/archived' },
+    ...(userData?.hiddenChatSettings?.showMenuEntry !== false ? [
+      { label: 'Hidden chats', icon: EyeOff, path: '/chats/hidden' }
+    ] : []),
     { label: 'Settings', icon: Settings, path: '/settings' },
   ];
 

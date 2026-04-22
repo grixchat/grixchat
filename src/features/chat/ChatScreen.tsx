@@ -32,7 +32,9 @@ import { ref as rtdbRef, onValue, update } from 'firebase/database';
 import { toDate, formatLastSeen } from '../../utils/dateUtils.ts';
 import { 
   doc, 
-  onSnapshot, 
+  onSnapshot,
+  updateDoc,
+  arrayUnion 
 } from 'firebase/firestore';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -300,6 +302,30 @@ export default function ChatScreen() {
     navigate('/');
   };
 
+  const hideChat = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        hiddenChats: arrayUnion(chatId)
+      });
+      navigate('/chats');
+    } catch (error) {
+      console.error("Error hiding chat:", error);
+    }
+  };
+
+  const archiveChat = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await updateDoc(doc(db, "users", auth.currentUser.uid), {
+        archivedChats: arrayUnion(chatId)
+      });
+      navigate('/chats');
+    } catch (error) {
+      console.error("Error archiving chat:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full w-full max-w-full bg-[var(--bg-main)] overflow-hidden relative">
       {/* Header */}
@@ -312,6 +338,8 @@ export default function ChatScreen() {
         isMuted={isMuted}
         setIsMuted={setIsMuted}
         deleteChat={deleteChat}
+        hideChat={hideChat}
+        archiveChat={archiveChat}
         optionsRef={optionsRef}
         isTyping={isOtherTyping}
         receiverStatus={receiverStatus}

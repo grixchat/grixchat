@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Delete, Lock, Info, X, ShieldAlert, LogOut, RefreshCw } from 'lucide-react';
 import { LockService } from '../../services/LockService.ts';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../providers/AuthProvider';
 
 interface GlobalLockScreenProps {
   onUnlock: () => void;
 }
 
 export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
+  const { userData } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   
-  const lockData = LockService.getLockData();
+  const lockData = LockService.getLockDataFromProfile(userData);
   const isNumeric = lockData.type === 'pin4' || lockData.type === 'pin6';
   const maxLength = lockData.type === 'pin4' ? 4 : lockData.type === 'pin6' ? 6 : 20;
 
@@ -21,7 +23,7 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
     if (value.length > 0) {
       if (isNumeric) {
         if (value.length === maxLength) {
-          if (LockService.verifyLock(value)) {
+          if (LockService.verifyLock(value, lockData.hash)) {
             onUnlock();
           } else {
             setError('Incorrect PIN');
@@ -30,13 +32,12 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
         }
       } else {
         // For alphabetical, we check if it matches the stored password
-        // Since we don't know the length, we check on every change if it's at least 4 chars
-        if (value.length >= 4 && LockService.verifyLock(value)) {
+        if (value.length >= 4 && LockService.verifyLock(value, lockData.hash)) {
           onUnlock();
         }
       }
     }
-  }, [value, isNumeric, maxLength, onUnlock]);
+  }, [value, isNumeric, maxLength, onUnlock, lockData.hash]);
 
   const handleKeyPress = (key: string) => {
     setError('');
@@ -59,7 +60,7 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
   };
 
   const handleVerify = () => {
-    if (LockService.verifyLock(value)) {
+    if (LockService.verifyLock(value, lockData.hash)) {
       onUnlock();
     } else {
       setError('Incorrect ' + (isNumeric ? 'PIN' : 'Password'));

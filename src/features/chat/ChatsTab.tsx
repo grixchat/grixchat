@@ -2,14 +2,16 @@ import React from 'react';
 import { auth } from '../../services/firebase.ts';
 import { useSearch } from '../../contexts/SearchContext.tsx';
 import { Link, useNavigate } from 'react-router-dom';
-import { MessageCircle, Phone, Video, ArrowUpRight, ArrowDownLeft, PhoneMissed, Info } from 'lucide-react';
+import { MessageCircle, Phone, Video, ArrowUpRight, ArrowDownLeft, PhoneMissed, Info, Lock } from 'lucide-react';
 import { useLayout } from '../../contexts/LayoutContext.tsx';
 import { motion } from 'motion/react';
 import { useConversations } from './hooks/useConversations.ts';
 import { useCalls } from './hooks/useCalls.ts';
+import { useAuth } from '../../providers/AuthProvider.tsx';
 
 export default function ChatsTab() {
   const navigate = useNavigate();
+  const { userData } = useAuth();
   const { searchTerm } = useSearch();
   const { activeFilters } = useLayout();
   const activeFilter = activeFilters['chats'] || 'Chats';
@@ -18,7 +20,16 @@ export default function ChatsTab() {
   const { calls, loading: callsLoading } = useCalls(activeFilter);
   const loading = activeFilter === 'Calls' ? callsLoading : conversationsLoading;
 
+  const isSecretCodeEntered = searchTerm && userData?.hiddenChatSettings?.secretCode && searchTerm === userData.hiddenChatSettings.secretCode;
+
   const filteredConversations = conversations.filter(c => {
+    const isHidden = userData?.hiddenChats?.includes(c.id);
+    const isArchived = userData?.archivedChats?.includes(c.id);
+    
+    // Only show hidden chats if the secret code is entered
+    if (isHidden && !isSecretCodeEntered) return false;
+    if (isArchived) return false;
+
     const matchesSearch = c.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.username.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -101,6 +112,26 @@ export default function ChatsTab() {
             )
           ) : (
             <>
+              {/* Secret Code Header - Shortcut to Hidden Chats */}
+              {isSecretCodeEntered && (
+                <div 
+                  onClick={() => navigate('/chats/hidden')}
+                  className="flex items-center gap-[15px] px-4 py-4 bg-[var(--primary)]/5 hover:bg-[var(--primary)]/10 transition-all cursor-pointer border-b border-[var(--primary)]/10"
+                >
+                  <div className="w-[52px] h-[52px] rounded-full bg-[var(--primary)]/20 flex items-center justify-center text-[var(--primary)] shrink-0">
+                    <Lock size={24} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[15px] font-black text-[var(--primary)] uppercase tracking-widest">
+                      Hidden chats
+                    </h3>
+                    <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-tight">
+                      {userData?.hiddenChats?.length || 0} locked conversations
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Grix AI - Always at top */}
               <div 
                 onClick={() => navigate('/chat/grix-ai')}
@@ -154,7 +185,7 @@ export default function ChatsTab() {
                         <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[var(--bg-card)] rounded-full"></div>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/50 pb-3 group-last:border-0">
+                    <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/50 pb-3 group-last:border-0 relative">
                       <div className="flex justify-between items-baseline mb-0.5">
                         <h3 className={`text-[15px] truncate ${chat.unread ? 'font-black text-[var(--text-primary)]' : 'font-bold text-[var(--text-primary)]'}`}>
                           {chat.user}

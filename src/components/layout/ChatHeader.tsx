@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  Archive,
   ArrowLeft, 
   MoreVertical, 
   Phone, 
@@ -23,6 +24,8 @@ interface ChatHeaderProps {
   isMuted: boolean;
   setIsMuted: (muted: boolean) => void;
   deleteChat: () => void;
+  hideChat?: () => void;
+  archiveChat?: () => void;
   optionsRef: React.RefObject<HTMLDivElement | null>;
   isTyping?: boolean;
   receiverStatus?: 'online' | 'offline';
@@ -39,6 +42,8 @@ export default function ChatHeader({
   isMuted,
   setIsMuted,
   deleteChat,
+  hideChat,
+  archiveChat,
   optionsRef,
   isTyping,
   receiverStatus,
@@ -132,7 +137,10 @@ export default function ChatHeader({
               </button>
               {receiverId !== 'gx-ai' && (
                 <>
-                  <button className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
+                  <button onClick={archiveChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
+                    <Archive size={18} className="text-[var(--text-secondary)]" /> Archive Chat
+                  </button>
+                  <button onClick={hideChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
                     <EyeOff size={18} className="text-[var(--text-secondary)]" /> Hide Chat
                   </button>
                   <button onClick={() => setIsMuted(!isMuted)} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">

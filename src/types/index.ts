@@ -20,6 +20,17 @@ export interface UserProfile {
     about?: 'everyone' | 'contacts' | 'nobody';
     groups?: 'everyone' | 'contacts' | 'nobody';
   };
+  lock?: {
+    isEnabled: boolean;
+    type: 'pin4' | 'pin6' | 'alpha' | null;
+    hash: string | null;
+  };
+  hiddenChats?: string[];
+  archivedChats?: string[];
+  hiddenChatSettings?: {
+    secretCode: string | null;
+    showMenuEntry: boolean;
+  };
 }
 
 export interface ChatMessage {

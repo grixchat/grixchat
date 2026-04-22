@@ -36,6 +36,8 @@ export default function HubTab() {
         { id: 'github', name: 'Github', icon: Github, color: 'bg-zinc-900', path: '/hub/github' },
         { id: 'webide', name: 'Web IDE', icon: Code2, color: 'bg-emerald-600', path: '/hub/web-ide' },
         { id: 'browser', name: 'Browser', icon: Globe, color: 'bg-sky-500', path: '/hub/browser' },
+        { id: 'youtube', name: 'YouTube', icon: Video, color: 'bg-red-600', path: 'https://m.youtube.com' },
+        { id: 'google', name: 'Google', icon: Globe, color: 'bg-blue-500', path: 'https://www.google.com' },
         { id: 'calendar', name: 'Calendar', icon: Calendar, color: 'bg-rose-500', path: '/apps/calendar' },
         { id: 'music', name: 'Music', icon: Music, color: 'bg-pink-500', path: '/apps/music' },
         { id: 'video', name: 'Video', icon: Video, color: 'bg-red-500', path: '/apps/video' },
@@ -57,9 +59,9 @@ export default function HubTab() {
     {
       title: "Games",
       items: [
+        { id: 'ludo', name: 'Ludo Stars', icon: Dices, color: 'bg-rose-500', path: '/hub/ludo' },
         { id: 'tictactoe', name: 'Tic Tac Toe', icon: Gamepad2, color: 'bg-indigo-500', path: '/games/tictactoe' },
         { id: 'snake', name: 'Snake', icon: Trophy, color: 'bg-green-500', path: '/games/snake' },
-        { id: 'dice', name: 'Ludo Dice', icon: Dices, color: 'bg-rose-500', path: '/games/dice' },
         { id: 'sudoku', name: 'Sudoku', icon: Hash, color: 'bg-amber-600', path: '/games/sudoku' },
         { id: '2048', name: '2048', icon: LayoutGrid, color: 'bg-orange-400', path: '/games/2048' },
         { id: 'tetris', name: 'Tetris', icon: Grid3X3, color: 'bg-blue-600', path: '/games/tetris' },
@@ -85,7 +87,14 @@ export default function HubTab() {
                 <motion.div
                   key={item.id}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => item.path.startsWith('http') ? window.open(item.path, '_blank') : navigate(item.path)}
+                  onClick={() => {
+                    if (item.path.startsWith('http')) {
+                      // In PWA standalone mode, this opens inside the app window
+                      window.location.href = item.path;
+                    } else {
+                      navigate(item.path);
+                    }
+                  }}
                   className="flex flex-col items-center gap-2 group cursor-pointer"
                 >
                   <div className={`w-14 h-14 ${item.color} rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform active:shadow-inner`}>

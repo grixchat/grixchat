@@ -3,13 +3,16 @@ import { ArrowLeft, ShieldCheck, Delete, ArrowRight, Lock, Check } from 'lucide-
 import { useNavigate } from 'react-router-dom';
 import { LockService } from '../../services/LockService.ts';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../providers/AuthProvider';
 
 export default function VerifyLockScreen() {
   const navigate = useNavigate();
+  const { userData } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
   
-  const lockData = LockService.getLockData();
+  const lockData = LockService.getLockDataFromProfile(userData);
   const isNumeric = lockData.type === 'pin4' || lockData.type === 'pin6';
   const maxLength = lockData.type === 'pin4' ? 4 : lockData.type === 'pin6' ? 6 : 20;
 
@@ -33,10 +36,19 @@ export default function VerifyLockScreen() {
     }
   };
 
-  const handleVerify = () => {
-    if (LockService.verifyLock(value)) {
-      LockService.disableLock();
-      navigate('/app-lock');
+  const handleVerify = async () => {
+    if (verifying) return;
+    
+    if (LockService.verifyLock(value, lockData.hash)) {
+      setVerifying(true);
+      try {
+        await LockService.disableLock();
+        navigate('/app-lock');
+      } catch (err) {
+        setError('Failed to disable lock');
+        setVerifying(false);
+        console.error(err);
+      }
     } else {
       setError('Incorrect ' + (isNumeric ? 'PIN' : 'Password'));
       setValue('');

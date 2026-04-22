@@ -47,8 +47,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "GrixChat Server is running" });
 });
 
-// Serve Firebase Messaging Service Worker with config injected
-// This avoids MIME type issues with query parameters in some environments
+// Serve Firebase Messaging Service Worker
 app.get("/firebase-messaging-sw.js", (req, res) => {
   const config = {
     apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -58,6 +57,10 @@ app.get("/firebase-messaging-sw.js", (req, res) => {
     messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.VITE_FIREBASE_APP_ID,
   };
+
+  if (!config.apiKey) {
+    console.error("SW Config Error: Firebase environment variables are missing on the server!");
+  }
 
   const script = `
 /* eslint-disable no-undef */
@@ -71,12 +74,11 @@ if (firebaseConfig.apiKey) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
-    console.log('[firebase-messaging-sw.js] Received background message ', payload);
     const notificationTitle = payload.notification?.title || 'New Message from GrixChat';
     const notificationOptions = {
       body: payload.notification?.body || 'You have a new message',
-      icon: payload.notification?.icon || '/assets/favicon.png',
-      badge: '/assets/favicon.png',
+      icon: '/logo.png',
+      badge: '/logo.png',
       data: payload.data
     };
     self.registration.showNotification(notificationTitle, notificationOptions);
@@ -84,6 +86,7 @@ if (firebaseConfig.apiKey) {
 }
   `;
   res.setHeader("Content-Type", "application/javascript");
+  res.setHeader("Service-Worker-Allowed", "/");
   res.send(script);
 });
 

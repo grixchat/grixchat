@@ -40,7 +40,7 @@ export default function SetupLockScreen() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 'enter') {
       if (isNumeric && value.length < maxLength) {
         setError(`Please enter a ${maxLength}-digit PIN`);
@@ -53,11 +53,16 @@ export default function SetupLockScreen() {
       setStep('confirm');
     } else {
       if (value === confirmValue) {
-        LockService.enableLock(type as LockType, value);
-        setSuccess(true);
-        setTimeout(() => {
-          navigate('/privacy-settings');
-        }, 1500);
+        try {
+          await LockService.enableLock(type as LockType, value);
+          setSuccess(true);
+          setTimeout(() => {
+            navigate('/privacy-settings');
+          }, 1500);
+        } catch (err) {
+          setError('Failed to setup lock. Please try again.');
+          console.error(err);
+        }
       } else {
         setError('Codes do not match. Try again.');
         setConfirmValue('');
