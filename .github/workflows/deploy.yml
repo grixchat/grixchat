@@ -41,6 +41,9 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_IMGBB_API_KEY: ${{ secrets.VITE_IMGBB_API_KEY }}
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          GH_CLIENT_SECRET: ${{ secrets.GH_CLIENT_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
           npm run build
           cp dist/index.html dist/404.html

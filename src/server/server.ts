@@ -33,8 +33,8 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 
 // GitHub OAuth Config
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_CLIENT_ID = process.env.GH_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GH_CLIENT_SECRET;
 
 // Configure Multer for temporary storage in the OS temp directory
 const upload = multer({ 
