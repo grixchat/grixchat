@@ -33,8 +33,8 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 
 // GitHub OAuth Config
-const GITHUB_CLIENT_ID = process.env.GH_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GH_CLIENT_SECRET;
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
 // Configure Multer for temporary storage in the OS temp directory
 const upload = multer({ 
@@ -122,15 +122,36 @@ app.post("/api/send-notification", async (req, res) => {
       data: data || {},
       webpush: {
         notification: {
-          icon: '/logo.png',
-          badge: '/logo.png',
+          icon: '/assets/favicon.png',
+          badge: '/assets/favicon.png',
           vibrate: [200, 100, 200],
-          requireInteraction: true // Keeps notification visible until user clicks
+          requireInteraction: true
         }
       }
     });
 
-    console.log(`Notification sent to ${tokens.length} devices. Success: ${response.successCount}, Failure: ${response.failureCount}`);
+    console.log(`Notification result: ${response.successCount} success, ${response.failureCount} failure`);
+
+    // Handle stale/invalid tokens
+    if (response.failureCount > 0) {
+      const invalidTokens: string[] = [];
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          const error = resp.error;
+          if (error?.code === 'messaging/registration-token-not-registered' || 
+              error?.code === 'messaging/invalid-registration-token') {
+            invalidTokens.push(tokens[idx]);
+          }
+        }
+      });
+
+      if (invalidTokens.length > 0) {
+        console.log(`Cleaning up ${invalidTokens.length} invalid tokens...`);
+        // This would require the user ID, which we don't have here unless passed.
+        // For now, we just log them. In a real app, you'd pass sender/receiver IDs to this API.
+      }
+    }
+
     res.json({ success: true, response });
   } catch (error: any) {
     console.error('FCM Error:', error.message);

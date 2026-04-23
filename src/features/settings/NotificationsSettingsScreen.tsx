@@ -50,6 +50,35 @@ export default function NotificationsSettingsScreen() {
 
   const [isSendingTest, setIsSendingTest] = useState(false);
   const isIframe = window.self !== window.top;
+  const [diag, setDiag] = useState<any>(null);
+
+  const runDiagnosis = async () => {
+    const results: any = {
+      browserSupport: typeof Notification !== 'undefined',
+      permission: typeof Notification !== 'undefined' ? Notification.permission : 'unknown',
+      iframe: window.self !== window.top,
+      swRegistered: false,
+      fcmSupported: false,
+      hasToken: !!userData?.fcmTokens?.length,
+      config: {
+        hasVapid: !!import.meta.env.VITE_FIREBASE_VAPID_KEY
+      }
+    };
+
+    try {
+      const { isSupported } = await import('firebase/messaging');
+      results.fcmSupported = await isSupported();
+    } catch (e) {
+      results.fcmError = String(e);
+    }
+
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      results.swRegistered = regs.some(r => r.active && r.active.scriptURL.includes('firebase-messaging-sw.js'));
+    }
+
+    setDiag(results);
+  };
 
   const sendTestNotification = async () => {
     if (!userData?.fcmTokens?.length) {
@@ -130,6 +159,35 @@ export default function NotificationsSettingsScreen() {
             </div>
           </div>
         )}
+
+        {/* Diagnostics Button */}
+        <div className="px-6 mb-6">
+          <button 
+            onClick={runDiagnosis}
+            className="w-full py-3 border border-[var(--border-color)] rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] hover:bg-zinc-50 transition-all flex items-center justify-center gap-2"
+          >
+            <AlertCircle size={14} /> Troubleshoot Notifications
+          </button>
+          
+          {diag && (
+            <div className="mt-4 p-4 bg-zinc-900 rounded-xl text-[10px] font-mono text-zinc-300 space-y-1 overflow-x-auto shadow-inner">
+               <p className="text-[var(--primary)] font-bold mb-2">DIAGNOSIS REPORT:</p>
+               <p>• Browser Support: <span className={diag.browserSupport ? 'text-emerald-400' : 'text-rose-400'}>{String(diag.browserSupport)}</span></p>
+               <p>• Permission: <span className={diag.permission === 'granted' ? 'text-emerald-400' : 'text-rose-400'}>{diag.permission}</span></p>
+               <p>• In an Iframe: <span className={diag.iframe ? 'text-rose-400' : 'text-emerald-400'}>{String(diag.iframe)}</span></p>
+               <p>• FCM Supported: <span className={diag.fcmSupported ? 'text-emerald-400' : 'text-rose-400'}>{String(diag.fcmSupported)}</span></p>
+               <p>• SW Registered: <span className={diag.swRegistered ? 'text-emerald-400' : 'text-rose-400'}>{String(diag.swRegistered)}</span></p>
+               <p>• Token Check: <span className={diag.hasToken ? 'text-emerald-400' : 'text-rose-400'}>{diag.hasToken ? 'FOUND' : 'MISSING'}</span></p>
+               <p>• VAPID Key: <span className={diag.config.hasVapid ? 'text-emerald-400' : 'text-rose-400'}>{diag.config.hasVapid ? 'CONFIGURED' : 'EMPTY'}</span></p>
+               {diag.fcmError && <p className="text-rose-400 mt-2">Error: {diag.fcmError}</p>}
+               {diag.iframe && (
+                 <p className="text-amber-400 mt-2 italic font-sans uppercase">
+                   ⚠️ Please open the app in a new tab to fix iframe issues.
+                 </p>
+               )}
+            </div>
+          )}
+        </div>
 
         {/* Master Permission Section */}
         <div className="bg-[var(--bg-card)] border-y border-[var(--border-color)] mt-6 mb-4">

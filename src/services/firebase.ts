@@ -18,6 +18,16 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Debug Config (Sanitized)
+if (typeof window !== 'undefined') {
+  console.log('Firebase Config Loaded:', {
+    projectId: firebaseConfig.projectId,
+    hasApiKey: !!firebaseConfig.apiKey,
+    hasMessagingId: !!firebaseConfig.messagingSenderId,
+    hasAppId: !!firebaseConfig.appId
+  });
+}
+
 // Export services
 export const auth = getAuth(app);
 
@@ -57,14 +67,21 @@ export const rtdb = getDatabase(app);
 // Messaging may not be supported in some environments (like iframes)
 export const messagingPromise = (async () => {
   try {
-    if (typeof window !== 'undefined') {
-      const supported = await isSupported();
-      if (supported) {
-        return getMessaging(app);
-      }
+    if (typeof window === 'undefined') return null;
+    
+    console.log('Checking FCM support...');
+    const supported = await isSupported();
+    console.log('FCM Supported:', supported);
+    
+    if (supported) {
+      const messaging = getMessaging(app);
+      console.log('FCM Messaging initialized');
+      return messaging;
+    } else {
+      console.warn('FCM is not supported in this browser environment. (Usually due to iframe, insecure origin, or unsupported browser)');
     }
   } catch (e) {
-    console.warn('Firebase Messaging is not supported in this browser environment.');
+    console.error('Error initializing Firebase Messaging:', e);
   }
   return null;
 })();

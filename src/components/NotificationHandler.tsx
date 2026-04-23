@@ -9,27 +9,27 @@ export default function NotificationHandler() {
 
   useEffect(() => {
     const initMessaging = async () => {
-      console.log('Initializing FCM...');
+      console.log('FCM: Initializing...');
+      
+      const isIframe = window.self !== window.top;
+      
       const messaging = await messagingPromise;
       if (!messaging) {
-        console.warn('FCM Messaging instance is null');
+        console.warn('FCM: Messaging instance is null.');
+        if (isIframe) {
+          console.warn('FCM: Notifications are likely disabled because the app is running inside an iframe. Please open GrixChat in a new tab.');
+        }
         return;
       }
       
       if (!auth.currentUser) {
-        console.warn('No authenticated user for FCM');
+        console.warn('FCM: No authenticated user');
         return;
       }
 
       if (typeof Notification === 'undefined') {
-        console.warn('Notification API is not available');
+        console.warn('FCM: Notification API not supported by browser');
         return;
-      }
-
-      // Check if we are in an iframe
-      const isIframe = window.self !== window.top;
-      if (isIframe) {
-        console.warn('Notifications often fail in iframes. Please open the app in a new tab for testing.');
       }
 
       // Detect iOS
