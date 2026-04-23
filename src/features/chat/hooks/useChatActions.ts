@@ -128,7 +128,8 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
             data: { 
               chatId, 
               senderId: myId,
-              click_action: '/chats'
+              imageUrl: fileType === 'image' ? fileUrl : null,
+              click_action: `/chat/${myId}`
             }
           })
         }).catch(err => console.error('Notification error:', err));

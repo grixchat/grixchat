@@ -74,16 +74,52 @@ if (firebaseConfig.apiKey) {
   const messaging = firebase.messaging();
 
   messaging.onBackgroundMessage((payload) => {
+    console.log('Background message received:', payload);
+    
     const notificationTitle = payload.notification?.title || 'New Message from GrixChat';
     const notificationOptions = {
       body: payload.notification?.body || 'You have a new message',
-      icon: '/logo.png',
-      badge: '/logo.png',
-      data: payload.data
+      icon: '/assets/favicon.png',
+      badge: '/assets/favicon.png',
+      image: payload.data?.imageUrl || null, // Show image preview if available
+      tag: payload.data?.chatId || 'grix-chat-notif', // Group messages by chat
+      renotify: true, // Vibrate for every new message in the same group
+      vibrate: [200, 100, 200],
+      data: {
+        click_action: payload.data?.click_action || '/chats',
+        chatId: payload.data?.chatId
+      },
+      actions: [
+        { action: 'open', title: 'Open Chat' },
+        { action: 'close', title: 'Dismiss' }
+      ]
     };
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    
+    return self.registration.showNotification(notificationTitle, notificationOptions);
   });
 }
+
+// Handle notification click event
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.click_action || '/chats';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If a window tab is already open, focus it
+      for (var i = 0; i < windowClients.length; i++) {
+        var client = windowClients[i];
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If not, open a new tab
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
   `;
   res.setHeader("Content-Type", "application/javascript");
   res.setHeader("Service-Worker-Allowed", "/");
