@@ -44,6 +44,7 @@ jobs:
           GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
           GH_CLIENT_SECRET: ${{ secrets.GH_CLIENT_SECRET }}
           APP_URL: ${{ secrets.APP_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           npm run build
           cp dist/index.html dist/404.html
