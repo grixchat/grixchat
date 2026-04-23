@@ -65,4 +65,4 @@ To minimize Firestore reads and improve performance, we are implementing:
    ```
 
 ---
-Developed with ❤️ by Gothwad Technologies.
+
