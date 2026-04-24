@@ -44,65 +44,61 @@ export default function NotificationHandler() {
       try {
         const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
         if (!vapidKey || vapidKey === "undefined") {
-          console.error('VITE_FIREBASE_VAPID_KEY is missing! Notifications will not work.');
+          console.error('FCM: VITE_FIREBASE_VAPID_KEY is missing!');
           return;
         }
 
         let registration;
         if ('serviceWorker' in navigator) {
-          console.log('Registering Service Worker for FCM...');
-          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-             scope: '/'
-          });
-          console.log('Service Worker registered successfully');
-        } else {
-          console.warn('Service Worker is not supported in this browser');
-          return;
-        }
-
-        // Wait for SW to be active
-        let sw = registration.installing || registration.waiting || registration.active;
-        if (sw) {
-          if (sw.state === 'activated') {
-            console.log('SW already active');
+          console.log('FCM: Registering/Checking Service Worker...');
+          // Check for existing registration for our specific SW
+          const regs = await navigator.serviceWorker.getRegistrations();
+          const existingReg = regs.find(r => r.active && r.active.scriptURL.includes('firebase-messaging-sw.js'));
+          
+          if (existingReg) {
+            registration = existingReg;
+            console.log('FCM: Using existing Service Worker');
           } else {
-            sw.addEventListener('statechange', (e: any) => {
-              if (e.target.state === 'activated') console.log('SW newly activated');
+            registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+              scope: '/'
             });
+            console.log('FCM: New Service Worker registered');
           }
+        } else {
+          console.warn('FCM: Service Worker not supported');
+          return;
         }
 
         await navigator.serviceWorker.ready;
 
         const permission = await Notification.requestPermission();
-        console.log('Notification permission status:', permission);
+        console.log('FCM: Permission status:', permission);
         
         if (permission === 'granted') {
-          console.log('Getting FCM Token...');
+          console.log('FCM: Getting Token...');
           try {
+            // Force fetch token to ensure it's fresh
             const token = await getToken(messaging, {
               vapidKey: vapidKey,
               serviceWorkerRegistration: registration
             });
 
             if (token) {
-              console.log('FCM Token received:', token);
+              console.log('FCM: Current Token:', token.substring(0, 10) + '...');
               const userRef = doc(db, 'users', auth.currentUser.uid);
+              
+              // We update it every time to ensure it exists in the array and refresh the timestamp if needed
               await updateDoc(userRef, {
-                fcmTokens: arrayUnion(token)
+                fcmTokens: arrayUnion(token),
+                lastTokenRefresh: new Date().toISOString()
               });
-              console.log('FCM Token saved to Firestore');
+              console.log('FCM: Token verified and synced');
             } else {
-              console.warn('No FCM Token received - possible VAPID key mismatch');
+              console.warn('FCM: No token received');
             }
           } catch (tokenError: any) {
-            console.error('Error getting FCM token:', tokenError);
-            if (tokenError.code === 'messaging/invalid-vapid-key') {
-              alert("FCM Error: The VAPID key in your settings is invalid. Please check Firebase Console.");
-            }
+            console.error('FCM: Token error:', tokenError);
           }
-        } else if (permission === 'denied') {
-          console.warn('Notification permission denied by user');
         }
       } catch (error: any) {
         console.error('Error in FCM initialization:', error);

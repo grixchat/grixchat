@@ -80,6 +80,26 @@ export default function NotificationsSettingsScreen() {
     setDiag(results);
   };
 
+  const repairNotifications = async () => {
+    if (!window.confirm("This will reset your browser's notification worker and try to fetch a new token. Proceed?")) return;
+    
+    setDiag((prev: any) => ({ ...prev, repairing: true }));
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const registration of regs) {
+          await registration.unregister();
+        }
+        console.log("All service workers unregistered.");
+      }
+      // Reload page to trigger fresh registration
+      window.location.reload();
+    } catch (e) {
+      alert("Repair failed: " + String(e));
+      setDiag((prev: any) => ({ ...prev, repairing: false }));
+    }
+  };
+
   const sendTestNotification = async () => {
     if (!userData?.fcmTokens?.length) {
       alert("No FCM tokens found. Make sure you have allowed notifications and the token is saved in your profile.");
@@ -180,6 +200,14 @@ export default function NotificationsSettingsScreen() {
                <p>• Token Check: <span className={diag.hasToken ? 'text-emerald-400' : 'text-rose-400'}>{diag.hasToken ? 'FOUND' : 'MISSING'}</span></p>
                <p>• VAPID Key: <span className={diag.config.hasVapid ? 'text-emerald-400' : 'text-rose-400'}>{diag.config.hasVapid ? 'CONFIGURED' : 'EMPTY'}</span></p>
                {diag.fcmError && <p className="text-rose-400 mt-2">Error: {diag.fcmError}</p>}
+               
+               <button 
+                onClick={repairNotifications}
+                className="mt-4 w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg text-[9px] font-bold uppercase transition-all mb-2"
+               >
+                 {diag.repairing ? 'Resetting...' : '⚠️ Repair & Hard Refresh'}
+               </button>
+
                {diag.iframe && (
                  <p className="text-amber-400 mt-2 italic font-sans uppercase">
                    ⚠️ Please open the app in a new tab to fix iframe issues.
