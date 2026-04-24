@@ -60,6 +60,7 @@ export default function NotificationsSettingsScreen() {
       swRegistered: false,
       fcmSupported: false,
       hasToken: !!userData?.fcmTokens?.length,
+      serverFcm: 'checking...',
       config: {
         hasVapid: !!import.meta.env.VITE_FIREBASE_VAPID_KEY
       }
@@ -70,6 +71,13 @@ export default function NotificationsSettingsScreen() {
       results.fcmSupported = await isSupported();
     } catch (e) {
       results.fcmError = String(e);
+    }
+
+    try {
+      const health = await fetch('/api/health').then(r => r.json());
+      results.serverFcm = health.fcmEnabled ? 'INITIALIZED' : 'FAILED';
+    } catch (e) {
+      results.serverFcm = 'UNREACHABLE';
     }
 
     if ('serviceWorker' in navigator) {
@@ -92,6 +100,10 @@ export default function NotificationsSettingsScreen() {
         }
         console.log("All service workers unregistered.");
       }
+      // Force clear all push subscriptions if possible
+      if ('PushManager' in window && diag?.swRegistered) {
+         // Subscription management is complex, unregistering SW is usually enough
+      }
       // Reload page to trigger fresh registration
       window.location.reload();
     } catch (e) {
@@ -113,9 +125,13 @@ export default function NotificationsSettingsScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokens: userData.fcmTokens,
+          receiverId: user?.uid, // Added for token cleanup
           title: "Test Notification",
           body: "Hello! This is a test notification from GrixChat 🚀",
-          data: { type: 'test' }
+          data: { 
+            type: 'test',
+            chatId: 'test-diagnostic'
+          }
         })
       });
 
@@ -199,6 +215,7 @@ export default function NotificationsSettingsScreen() {
                <p>• SW Registered: <span className={diag.swRegistered ? 'text-emerald-400' : 'text-rose-400'}>{String(diag.swRegistered)}</span></p>
                <p>• Token Check: <span className={diag.hasToken ? 'text-emerald-400' : 'text-rose-400'}>{diag.hasToken ? 'FOUND' : 'MISSING'}</span></p>
                <p>• VAPID Key: <span className={diag.config.hasVapid ? 'text-emerald-400' : 'text-rose-400'}>{diag.config.hasVapid ? 'CONFIGURED' : 'EMPTY'}</span></p>
+               <p>• Server Auth: <span className={diag.serverFcm === 'INITIALIZED' ? 'text-emerald-400' : 'text-rose-400'}>{diag.serverFcm}</span></p>
                {diag.fcmError && <p className="text-rose-400 mt-2">Error: {diag.fcmError}</p>}
                
                <button 

@@ -44,7 +44,11 @@ const upload = multer({
 
 // API routes
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "GrixChat Server is running" });
+  res.json({ 
+    status: "ok", 
+    message: "GrixChat Server is running",
+    fcmEnabled: !!admin.apps.length
+  });
 });
 
 // Serve Firebase Messaging Service Worker
@@ -64,8 +68,8 @@ app.get("/firebase-messaging-sw.js", (req, res) => {
 
   const script = `
 /* eslint-disable no-undef */
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
 const firebaseConfig = ${JSON.stringify(config)};
 
@@ -76,22 +80,22 @@ if (firebaseConfig.apiKey) {
   messaging.onBackgroundMessage((payload) => {
     console.log('Background message received:', payload);
     
-    const notificationTitle = payload.notification?.title || 'New Message from GrixChat';
+    // Check if we should show a notification (e.g. not muted, though usually handled by sender)
+    const notificationTitle = payload.notification?.title || payload.data?.title || 'New Message from GrixChat';
     const notificationOptions = {
-      body: payload.notification?.body || 'You have a new message',
+      body: payload.notification?.body || payload.data?.body || 'You have a new message',
       icon: '/assets/favicon.png',
       badge: '/assets/favicon.png',
-      image: payload.data?.imageUrl || null, // Show image preview if available
-      tag: payload.data?.chatId || 'grix-chat-notif', // Group messages by chat
-      renotify: true, // Vibrate for every new message in the same group
+      image: payload.data?.imageUrl || null, 
+      tag: payload.data?.chatId || 'grix-chat-notif', 
+      renotify: true, 
       vibrate: [200, 100, 200],
       data: {
         click_action: payload.data?.click_action || '/chats',
         chatId: payload.data?.chatId
       },
       actions: [
-        { action: 'open', title: 'Open Chat' },
-        { action: 'close', title: 'Dismiss' }
+        { action: 'open', title: 'Open Chat' }
       ]
     };
     
@@ -123,6 +127,7 @@ self.addEventListener('notificationclick', (event) => {
   `;
   res.setHeader("Content-Type", "application/javascript");
   res.setHeader("Service-Worker-Allowed", "/");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.send(script);
 });
 
@@ -140,7 +145,7 @@ app.get("/sitemap.xml", (req, res) => {
 
 // Send Notification Proxy
 app.post("/api/send-notification", async (req, res) => {
-  const { tokens, title, body, data } = req.body;
+  const { tokens, title, body, data, receiverId } = req.body;
   
   if (!tokens || !tokens.length) {
     return res.status(400).json({ error: 'No tokens provided' });
@@ -161,15 +166,24 @@ app.post("/api/send-notification", async (req, res) => {
           icon: '/assets/favicon.png',
           badge: '/assets/favicon.png',
           vibrate: [200, 100, 200],
-          requireInteraction: true
+          requireInteraction: true,
+          tag: data?.chatId || 'grix-chat-msg'
         }
       }
     });
 
     console.log(`Notification result: ${response.successCount} success, ${response.failureCount} failure`);
-
+    console.log('FCM Tokens tested:', tokens.length);
+    
     // Handle stale/invalid tokens
     if (response.failureCount > 0) {
+      console.log('Detailed FCM failures:');
+      response.responses.forEach((resp, idx) => {
+        if (!resp.success) {
+          console.log(`- Token ${idx}: ${resp.error?.code || 'unknown'} - ${resp.error?.message || ''}`);
+        }
+      });
+      
       const invalidTokens: string[] = [];
       response.responses.forEach((resp, idx) => {
         if (!resp.success) {
@@ -181,14 +195,29 @@ app.post("/api/send-notification", async (req, res) => {
         }
       });
 
-      if (invalidTokens.length > 0) {
-        console.log(`Cleaning up ${invalidTokens.length} invalid tokens...`);
-        // This would require the user ID, which we don't have here unless passed.
-        // For now, we just log them. In a real app, you'd pass sender/receiver IDs to this API.
+      if (invalidTokens.length > 0 && receiverId) {
+        console.log(`Cleaning up ${invalidTokens.length} invalid tokens for user ${receiverId}...`);
+        try {
+          const userRef = admin.firestore().collection('users').doc(receiverId);
+          const userDoc = await userRef.get();
+          if (userDoc.exists) {
+            const currentTokens = userDoc.data()?.fcmTokens || [];
+            const remainingTokens = currentTokens.filter((t: string) => !invalidTokens.includes(t));
+            await userRef.update({ fcmTokens: remainingTokens });
+            console.log('FCM Tokens cleaned up in Firestore');
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up tokens:', cleanupErr);
+        }
       }
     }
 
-    res.json({ success: true, response });
+    res.json({ 
+      success: response.successCount > 0, 
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+      response 
+    });
   } catch (error: any) {
     console.error('FCM Error:', error.message);
     res.status(500).json({ error: error.message });

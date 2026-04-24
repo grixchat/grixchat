@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { messagingPromise, auth, db } from '../services/firebase.ts';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
 import { useAuth } from '../providers/AuthProvider';
 
 export default function NotificationHandler() {
@@ -87,11 +87,11 @@ export default function NotificationHandler() {
               console.log('FCM: Current Token:', token.substring(0, 10) + '...');
               const userRef = doc(db, 'users', auth.currentUser.uid);
               
-              // We update it every time to ensure it exists in the array and refresh the timestamp if needed
-              await updateDoc(userRef, {
+              // Use setDoc with merge to ensure it works even if doc doesn't exist yet
+              await setDoc(userRef, {
                 fcmTokens: arrayUnion(token),
                 lastTokenRefresh: new Date().toISOString()
-              });
+              }, { merge: true });
               console.log('FCM: Token verified and synced');
             } else {
               console.warn('FCM: No token received');

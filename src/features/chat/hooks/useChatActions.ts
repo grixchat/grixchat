@@ -123,6 +123,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tokens: receiver.fcmTokens,
+            receiverId: receiverId, // Added for token cleanup
             title: `${auth.currentUser?.displayName || 'GrixChat User'}`,
             body: text || (fileType === 'image' ? 'Sent an image' : fileType === 'video' ? 'Sent a video' : 'Sent a file'),
             data: { 
