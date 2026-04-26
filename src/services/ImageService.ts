@@ -17,7 +17,8 @@ export class ImageService {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     if (!IMGBB_API_KEY) {
-      throw new Error("ImgBB API Key is not configured. Please add VITE_IMGBB_API_KEY to your environment.");
+      console.warn("ImgBB API Key missing, falling back to server proxy");
+      return this.uploadViaProxy(file, onProgress);
     }
 
     // Simulate progress since fetch doesn't provide it easily for small uploads
@@ -55,6 +56,29 @@ export class ImageService {
       console.error("ImgBB Upload Error:", error);
       throw error;
     }
+  }
+
+  /**
+   * Fallback to server proxy for image upload
+   */
+  static async uploadViaProxy(file: File, onProgress?: (progress: number) => void): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    if (onProgress) onProgress(30);
+    
+    const response = await fetch('/api/upload-file', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Image upload failed');
+    }
+
+    if (onProgress) onProgress(100);
+    return data.downloadUrl;
   }
 
   /**

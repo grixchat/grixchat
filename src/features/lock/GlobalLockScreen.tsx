@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Delete, Lock, Info, X, ShieldAlert, LogOut, RefreshCw } from 'lucide-react';
-import { LockService } from '../../services/LockService';
+import { LockService } from '../../services/LockService.ts';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../providers/AuthProvider';
 
 interface GlobalLockScreenProps {
   onUnlock: () => void;
-  userData: any;
 }
 
-export default function GlobalLockScreen({ onUnlock, userData }: GlobalLockScreenProps) {
+export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
+  const { userData } = useAuth();
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);

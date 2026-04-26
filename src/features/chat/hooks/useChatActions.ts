@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../../../services/firebase.ts';
 import { ImageService } from '../../../services/ImageService.ts';
+import { VideoService } from '../../../services/VideoService.ts';
 import { GofileService } from '../services/GofileService.ts';
 import { toDate } from '../../../utils/dateUtils.ts';
 
@@ -47,8 +48,8 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           fileUrl = await ImageService.uploadImage(file, onProgress);
           fileType = 'image';
         } else if (file.type.startsWith('video/')) {
-          // Use server proxy for video (Catbox)
-          fileUrl = await GofileService.uploadFile(file);
+          // Use Cloudinary for video if configured, fallback to Catbox
+          fileUrl = await VideoService.uploadVideo(file, onProgress);
           fileType = 'video';
         } else {
           // Use server proxy for other files (Gofile)
@@ -123,7 +124,6 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tokens: receiver.fcmTokens,
-            receiverId: receiverId, // Added for token cleanup
             title: `${auth.currentUser?.displayName || 'GrixChat User'}`,
             body: text || (fileType === 'image' ? 'Sent an image' : fileType === 'video' ? 'Sent a video' : 'Sent a file'),
             data: { 

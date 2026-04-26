@@ -60,7 +60,6 @@ export default function NotificationsSettingsScreen() {
       swRegistered: false,
       fcmSupported: false,
       hasToken: !!userData?.fcmTokens?.length,
-      serverFcm: 'checking...',
       config: {
         hasVapid: !!import.meta.env.VITE_FIREBASE_VAPID_KEY
       }
@@ -73,43 +72,12 @@ export default function NotificationsSettingsScreen() {
       results.fcmError = String(e);
     }
 
-    try {
-      const health = await fetch('/api/health').then(r => r.json());
-      results.serverFcm = health.fcmEnabled ? 'INITIALIZED' : 'FAILED';
-    } catch (e) {
-      results.serverFcm = 'UNREACHABLE';
-    }
-
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
       results.swRegistered = regs.some(r => r.active && r.active.scriptURL.includes('firebase-messaging-sw.js'));
     }
 
     setDiag(results);
-  };
-
-  const repairNotifications = async () => {
-    if (!window.confirm("This will reset your browser's notification worker and try to fetch a new token. Proceed?")) return;
-    
-    setDiag((prev: any) => ({ ...prev, repairing: true }));
-    try {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const registration of regs) {
-          await registration.unregister();
-        }
-        console.log("All service workers unregistered.");
-      }
-      // Force clear all push subscriptions if possible
-      if ('PushManager' in window && diag?.swRegistered) {
-         // Subscription management is complex, unregistering SW is usually enough
-      }
-      // Reload page to trigger fresh registration
-      window.location.reload();
-    } catch (e) {
-      alert("Repair failed: " + String(e));
-      setDiag((prev: any) => ({ ...prev, repairing: false }));
-    }
   };
 
   const sendTestNotification = async () => {
@@ -125,13 +93,9 @@ export default function NotificationsSettingsScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokens: userData.fcmTokens,
-          receiverId: user?.uid, // Added for token cleanup
           title: "Test Notification",
           body: "Hello! This is a test notification from GrixChat 🚀",
-          data: { 
-            type: 'test',
-            chatId: 'test-diagnostic'
-          }
+          data: { type: 'test' }
         })
       });
 
@@ -215,16 +179,7 @@ export default function NotificationsSettingsScreen() {
                <p>• SW Registered: <span className={diag.swRegistered ? 'text-emerald-400' : 'text-rose-400'}>{String(diag.swRegistered)}</span></p>
                <p>• Token Check: <span className={diag.hasToken ? 'text-emerald-400' : 'text-rose-400'}>{diag.hasToken ? 'FOUND' : 'MISSING'}</span></p>
                <p>• VAPID Key: <span className={diag.config.hasVapid ? 'text-emerald-400' : 'text-rose-400'}>{diag.config.hasVapid ? 'CONFIGURED' : 'EMPTY'}</span></p>
-               <p>• Server Auth: <span className={diag.serverFcm === 'INITIALIZED' ? 'text-emerald-400' : 'text-rose-400'}>{diag.serverFcm}</span></p>
                {diag.fcmError && <p className="text-rose-400 mt-2">Error: {diag.fcmError}</p>}
-               
-               <button 
-                onClick={repairNotifications}
-                className="mt-4 w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg text-[9px] font-bold uppercase transition-all mb-2"
-               >
-                 {diag.repairing ? 'Resetting...' : '⚠️ Repair & Hard Refresh'}
-               </button>
-
                {diag.iframe && (
                  <p className="text-amber-400 mt-2 italic font-sans uppercase">
                    ⚠️ Please open the app in a new tab to fix iframe issues.

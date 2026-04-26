@@ -209,7 +209,7 @@ export default function ChatScreen() {
     const file = e.target.files?.[0];
     if (!file || !auth.currentUser) return;
 
-    if (file.type.startsWith('image/')) {
+    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
       const reader = new FileReader();
       reader.onloadend = () => setFilePreviewUrl(reader.result as string);
       reader.readAsDataURL(file);
@@ -462,7 +462,7 @@ export default function ChatScreen() {
                       )}
 
                       <div className="flex flex-col min-w-[60px] max-w-full">
-                        {msg.imageUrl && (
+                        {msg.imageUrl && msg.type !== 'video' && (
                           <div 
                             className="mb-1 rounded-lg overflow-hidden border border-black/5 cursor-pointer active:opacity-80 transition-opacity"
                             onClick={(e) => {
@@ -488,7 +488,17 @@ export default function ChatScreen() {
                             )}
                           </div>
                         )}
-                        {msg.fileUrl && (
+                        {(msg.type === 'video' || (msg.fileUrl && msg.type === 'video')) && (
+                          <div className="mb-1 rounded-lg overflow-hidden border border-black/5">
+                            <video 
+                              src={msg.fileUrl || msg.imageUrl} 
+                              controls 
+                              className="max-w-full h-auto max-h-80 object-contain bg-black"
+                              playsInline
+                            />
+                          </div>
+                        )}
+                        {msg.fileUrl && msg.type !== 'video' && (
                           <div className="mb-1 p-2 rounded-lg bg-black/5 border border-black/10 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)]">
                               <FileIcon size={20} />

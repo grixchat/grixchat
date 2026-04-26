@@ -109,7 +109,7 @@ export default function ChatBottom({
           type="file" 
           ref={imageInputRef} 
           className="hidden" 
-          accept="image/*" 
+          accept="image/*,video/*" 
           onChange={handleFileChange}
         />
         <input 
@@ -132,7 +132,11 @@ export default function ChatBottom({
             <div className="mb-2 relative w-fit group">
               <div className="relative rounded-xl overflow-hidden border border-white/20 shadow-lg max-w-[120px] bg-white/5 p-2">
                 {filePreviewUrl ? (
-                  <img src={filePreviewUrl} alt="Preview" className="w-full h-auto rounded-lg" />
+                  selectedFile?.type.startsWith('video/') ? (
+                    <video src={filePreviewUrl} className="w-full h-auto rounded-lg" muted />
+                  ) : (
+                    <img src={filePreviewUrl} alt="Preview" className="w-full h-auto rounded-lg" />
+                  )
                 ) : (
                   <div className="flex flex-col items-center gap-1 py-2 px-1">
                     <X className="text-white/40" size={24} />

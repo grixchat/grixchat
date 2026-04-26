@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { APP_CONFIG } from './config/appConfig';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { LockService } from './services/LockService';
-import { CacheService } from './services/CacheService';
-import NotificationHandler from './components/NotificationHandler';
+import { LockService } from './services/LockService.ts';
+import { CacheService } from './services/CacheService.ts';
+import NotificationHandler from './components/NotificationHandler.tsx';
 import DesktopSidebar from './components/layout/DesktopSidebar';
 import { motion } from 'motion/react';
 import { useAuth } from './providers/AuthProvider';
@@ -92,15 +92,14 @@ const TermsAndConditionsScreen = React.lazy(() => import('./features/legal/Terms
 const AppLockScreen = React.lazy(() => import('./features/lock').then(m => ({ default: m.AppLockScreen })));
 const SetupLockScreen = React.lazy(() => import('./features/lock').then(m => ({ default: m.SetupLockScreen })));
 const VerifyLockScreen = React.lazy(() => import('./features/lock').then(m => ({ default: m.VerifyLockScreen })));
+const GlobalLockScreen = React.lazy(() => import('./features/lock').then(m => ({ default: m.GlobalLockScreen })));
+
 const CallScreen = React.lazy(() => import('./features/call').then(m => ({ default: m.CallScreen })));
 
-// Direct import for critical lock screen to avoid Suspense and naming issues
-import GlobalLockScreenDirect from './features/lock/GlobalLockScreen';
-
-import { storage } from './services/StorageService';
-import MainLayout from './components/layout/MainLayout';
-import { LayoutProvider } from './contexts/LayoutContext';
-import { NavProvider } from './contexts/NavContext';
+import { storage } from './services/StorageService.ts';
+import MainLayout from './components/layout/MainLayout.tsx';
+import { LayoutProvider } from './contexts/LayoutContext.tsx';
+import { NavProvider } from './contexts/NavContext.tsx';
 
 const ImagePreviewScreen = React.lazy(() => import('./features/chat/ImagePreviewScreen'));
 
@@ -210,7 +209,7 @@ export default function App() {
   }
 
   if (!isUnlocked) {
-    return <GlobalLockScreenDirect onUnlock={() => setIsUnlocked(true)} userData={userData} />;
+    return <GlobalLockScreen onUnlock={() => setIsUnlocked(true)} />;
   }
 
   // Guard Logic

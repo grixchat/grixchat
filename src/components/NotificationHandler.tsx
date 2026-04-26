@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { messagingPromise, auth, db } from '../services/firebase.ts';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '../providers/AuthProvider';
 
 export default function NotificationHandler() {
@@ -44,61 +44,65 @@ export default function NotificationHandler() {
       try {
         const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
         if (!vapidKey || vapidKey === "undefined") {
-          console.error('FCM: VITE_FIREBASE_VAPID_KEY is missing!');
+          console.error('VITE_FIREBASE_VAPID_KEY is missing! Notifications will not work.');
           return;
         }
 
         let registration;
         if ('serviceWorker' in navigator) {
-          console.log('FCM: Registering/Checking Service Worker...');
-          // Check for existing registration for our specific SW
-          const regs = await navigator.serviceWorker.getRegistrations();
-          const existingReg = regs.find(r => r.active && r.active.scriptURL.includes('firebase-messaging-sw.js'));
-          
-          if (existingReg) {
-            registration = existingReg;
-            console.log('FCM: Using existing Service Worker');
-          } else {
-            registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-              scope: '/'
-            });
-            console.log('FCM: New Service Worker registered');
-          }
+          console.log('Registering Service Worker for FCM...');
+          registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+             scope: '/'
+          });
+          console.log('Service Worker registered successfully');
         } else {
-          console.warn('FCM: Service Worker not supported');
+          console.warn('Service Worker is not supported in this browser');
           return;
+        }
+
+        // Wait for SW to be active
+        let sw = registration.installing || registration.waiting || registration.active;
+        if (sw) {
+          if (sw.state === 'activated') {
+            console.log('SW already active');
+          } else {
+            sw.addEventListener('statechange', (e: any) => {
+              if (e.target.state === 'activated') console.log('SW newly activated');
+            });
+          }
         }
 
         await navigator.serviceWorker.ready;
 
         const permission = await Notification.requestPermission();
-        console.log('FCM: Permission status:', permission);
+        console.log('Notification permission status:', permission);
         
         if (permission === 'granted') {
-          console.log('FCM: Getting Token...');
+          console.log('Getting FCM Token...');
           try {
-            // Force fetch token to ensure it's fresh
             const token = await getToken(messaging, {
               vapidKey: vapidKey,
               serviceWorkerRegistration: registration
             });
 
             if (token) {
-              console.log('FCM: Current Token:', token.substring(0, 10) + '...');
+              console.log('FCM Token received:', token);
               const userRef = doc(db, 'users', auth.currentUser.uid);
-              
-              // Use setDoc with merge to ensure it works even if doc doesn't exist yet
-              await setDoc(userRef, {
-                fcmTokens: arrayUnion(token),
-                lastTokenRefresh: new Date().toISOString()
-              }, { merge: true });
-              console.log('FCM: Token verified and synced');
+              await updateDoc(userRef, {
+                fcmTokens: arrayUnion(token)
+              });
+              console.log('FCM Token saved to Firestore');
             } else {
-              console.warn('FCM: No token received');
+              console.warn('No FCM Token received - possible VAPID key mismatch');
             }
           } catch (tokenError: any) {
-            console.error('FCM: Token error:', tokenError);
+            console.error('Error getting FCM token:', tokenError);
+            if (tokenError.code === 'messaging/invalid-vapid-key') {
+              alert("FCM Error: The VAPID key in your settings is invalid. Please check Firebase Console.");
+            }
           }
+        } else if (permission === 'denied') {
+          console.warn('Notification permission denied by user');
         }
       } catch (error: any) {
         console.error('Error in FCM initialization:', error);
