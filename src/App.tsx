@@ -46,6 +46,9 @@ const StoryMakerScreen = React.lazy(() => import('./features/stories').then(m =>
 const StoryWatcherScreen = React.lazy(() => import('./features/stories').then(m => ({ default: m.StoryWatcherScreen })));
 const CreatePostScreen = React.lazy(() => import('./features/home').then(m => ({ default: m.CreatePostScreen })));
 const NotificationsScreen = React.lazy(() => import('./features/notifications/NotificationsScreen.tsx'));
+const LikeNotificationsScreen = React.lazy(() => import('./features/notifications/LikeNotificationsScreen.tsx'));
+const CommentsScreen = React.lazy(() => import('./features/home/CommentsScreen.tsx'));
+const ShareScreen = React.lazy(() => import('./features/home/ShareScreen.tsx'));
 
 const ProfileTab = React.lazy(() => import('./features/profile').then(m => ({ default: m.ProfileTab })));
 const EditProfileScreen = React.lazy(() => import('./features/profile').then(m => ({ default: m.EditProfileScreen })));
@@ -263,6 +266,9 @@ export default function App() {
                     <Route path="/call/:id" element={user ? <CallScreen /> : <Navigate to="/login" />} />
                     <Route path="/create" element={user ? <CreatePostScreen /> : <Navigate to="/login" />} />
                     <Route path="/notifications" element={user ? <NotificationsScreen /> : <Navigate to="/login" />} />
+                    <Route path="/notifications/likes" element={user ? <LikeNotificationsScreen /> : <Navigate to="/login" />} />
+                    <Route path="/posts/:postId/comments" element={user ? <CommentsScreen /> : <Navigate to="/login" />} />
+                    <Route path="/posts/:postId/share" element={user ? <ShareScreen /> : <Navigate to="/login" />} />
                     <Route path="/stories/create" element={user ? <StoryMakerScreen /> : <Navigate to="/login" />} />
                     <Route path="/reels/create" element={user ? <ReelsMakerScreen /> : <Navigate to="/login" />} />
                     <Route path="/reels/watch/:id" element={user ? <ReelWatcherScreen /> : <Navigate to="/login" />} />

@@ -22,33 +22,30 @@ import {
   Loader2,
   Clapperboard,
   UserSquare2,
-  Upload
+  Bookmark
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { auth, db } from '../../services/firebase.ts';
 import { toDate } from '../../utils/dateUtils.ts';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, onSnapshot, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import ProfileContent from './components/ProfileContent.tsx';
 import { motion, AnimatePresence } from 'motion/react';
+import PostCard from '../home/components/PostCard.tsx';
 
 export default function UserProfileScreen() {
   const { id: userId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('posts');
   const [showMenu, setShowMenu] = useState(false);
+  const [posts, setPosts] = useState<any[]>([]);
 
   const DEFAULT_LOGO = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-  // Mock posts for the grid
-  const mockPosts = Array.from({ length: 9 }).map((_, i) => ({
-    id: i,
-    url: `https://picsum.photos/seed/post${i}/400/400`
-  }));
 
   useEffect(() => {
     if (!userId) return;
@@ -70,11 +67,20 @@ export default function UserProfileScreen() {
       unsubscribeMe = onSnapshot(doc(db, "users", auth.currentUser.uid), (myDocSnap) => {
         if (myDocSnap.exists()) {
           const myData = myDocSnap.data();
+          setCurrentUserData(myData);
           setIsBlocked(myData.blockedUsers?.includes(userId) || false);
           setIsFollowing(myData.following?.includes(userId) || false);
         }
       });
     }
+
+    // Fetch user posts
+    const fetchPosts = async () => {
+      const q = query(collection(db, "posts"), where("userId", "==", userId));
+      const snaps = await getDocs(q);
+      setPosts(snaps.docs.map(d => ({ id: d.id, ...d.data() })));
+    };
+    fetchPosts();
 
     return () => {
       unsubscribeUser();
@@ -100,6 +106,20 @@ export default function UserProfileScreen() {
       await updateDoc(targetDocRef, {
         followers: newFollowState ? arrayUnion(auth.currentUser.uid) : arrayRemove(auth.currentUser.uid)
       });
+
+      // Add Notification if following
+      if (newFollowState) {
+        await addDoc(collection(db, "notifications"), {
+          userId: userId,
+          fromUserId: auth.currentUser.uid,
+          fromUserName: currentUserData?.fullName || 'User',
+          fromUserAvatar: currentUserData?.photoURL || '',
+          type: 'follow',
+          text: 'started following you',
+          read: false,
+          createdAt: serverTimestamp()
+        });
+      }
       
       setIsFollowing(newFollowState);
     } catch (error) {
@@ -281,10 +301,10 @@ export default function UserProfileScreen() {
                 onClick={() => setActiveFilter('saved')}
                 className={`flex-1 flex justify-center items-center transition-colors ${activeFilter === 'saved' ? 'bg-white/10 text-[var(--box-text)]' : 'text-[var(--box-text)] opacity-50'}`}
               >
-                <Upload size={20} />
+                <Bookmark size={20} />
               </button>
             </div>
-            <ProfileContent posts={mockPosts} activeTab={activeFilter} />
+            <ProfileContent posts={posts} activeTab={activeFilter} />
           </div>
         )}
 

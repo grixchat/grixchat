@@ -138,9 +138,9 @@ export default function TabHeader() {
 
         {/* Heart Icon - Show on Home */}
         {isHomePage && (
-          <button className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+          <Link to="/notifications/likes" className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
             <Heart size={22} className="text-[var(--header-text)]" />
-          </button>
+          </Link>
         )}
 
         {/* Bell Icon - Show on Home */}

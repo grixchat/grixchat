@@ -20,6 +20,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { toDate } from '../../utils/dateUtils.ts';
 
+import PostCard from './components/PostCard.tsx';
+
 export default function HomeTab() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
@@ -248,69 +250,7 @@ export default function HomeTab() {
           </div>
         ) : posts.length > 0 ? (
           posts.map((post) => (
-            <div key={post.id} className="flex flex-col border-b border-[var(--border-color)]/30 pb-4">
-              {/* Post Header */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3" onClick={() => navigate(`/user/${post.userId}`)}>
-                  <img 
-                    src={post.userAvatar || DEFAULT_LOGO} 
-                    className="w-8 h-8 rounded-full object-cover" 
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">{post.userName || 'User'}</span>
-                    {post.location && <span className="text-[10px] text-[var(--text-secondary)]">{post.location}</span>}
-                  </div>
-                </div>
-                <button className="text-[var(--text-secondary)]">
-                  <MoreVertical size={18} />
-                </button>
-              </div>
-
-              {/* Post Image */}
-              <div className="w-full aspect-square bg-zinc-100 overflow-hidden">
-                <img 
-                  src={post.imageUrl || `https://picsum.photos/seed/${post.id}/800/800`} 
-                  className="w-full h-full object-cover" 
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-
-              {/* Post Actions */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-4">
-                  <button className="text-[var(--text-primary)] hover:text-red-500 transition-colors">
-                    <Heart size={24} />
-                  </button>
-                  <button className="text-[var(--text-primary)]">
-                    <MessageCircle size={24} />
-                  </button>
-                  <button className="text-[var(--text-primary)]">
-                    <Send size={24} />
-                  </button>
-                </div>
-                <button className="text-[var(--text-primary)]">
-                  <Bookmark size={24} />
-                </button>
-              </div>
-
-              {/* Likes & Caption */}
-              <div className="px-4 space-y-1">
-                <p className="text-xs font-bold text-[var(--text-primary)]">{post.likes || 0} likes</p>
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-bold text-[var(--text-primary)]">{post.userName}</span>
-                  <p className="text-xs text-[var(--text-primary)] line-clamp-2">{post.caption}</p>
-                </div>
-                {post.comments > 0 && (
-                  <button className="text-xs text-[var(--text-secondary)] mt-1">
-                    View all {post.comments} comments
-                  </button>
-                )}
-                <p className="text-[9px] text-[var(--text-secondary)] uppercase mt-1">
-                  {post.createdAt ? toDate(post.createdAt)?.toLocaleDateString() : 'Just now'}
-                </p>
-              </div>
-            </div>
+            <PostCard key={post.id} post={post} currentUserData={currentUserData} />
           ))
         ) : (
           <div className="flex flex-col items-center justify-center py-20 px-10 text-center gap-4">

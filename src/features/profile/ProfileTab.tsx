@@ -31,17 +31,35 @@ export default function ProfileTab() {
       }
     });
 
-    // Fetch user posts
-    const fetchPosts = async () => {
-      const q = query(collection(db, "posts"), where("userId", "==", auth.currentUser?.uid));
-      const querySnapshot = await getDocs(q);
-      const userPosts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPosts(userPosts);
-    };
-    fetchPosts();
-
     return () => unsubscribe();
   }, []);
+
+  // Fetch posts based on active tab
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    const fetchContent = async () => {
+      if (activeTab === 'posts') {
+        const q = query(collection(db, "posts"), where("userId", "==", auth.currentUser?.uid));
+        const snapshot = await getDocs(q);
+        setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } else if (activeTab === 'saved') {
+        if (userData?.savedPosts && userData.savedPosts.length > 0) {
+          // Firestore 'in' query has limit of 10-30 depending on version
+          const savedIds = userData.savedPosts.slice(0, 10); 
+          const q = query(collection(db, "posts"), where("__name__", "in", savedIds));
+          const snapshot = await getDocs(q);
+          setPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          setPosts([]);
+        }
+      } else {
+        setPosts([]);
+      }
+    };
+    
+    fetchContent();
+  }, [activeTab, userData?.savedPosts]);
 
   return (
     <div className="flex flex-col bg-[var(--bg-main)] font-sans h-full overflow-y-auto no-scrollbar">
@@ -126,7 +144,7 @@ export default function ProfileTab() {
               onClick={() => setActiveTab('saved')}
               className={`flex-1 flex justify-center items-center transition-colors ${activeTab === 'saved' ? 'bg-white/10 text-[var(--box-text)]' : 'text-[var(--box-text)] opacity-50'}`}
             >
-              <Upload size={20} />
+              <Bookmark size={20} />
             </button>
           </div>
         </div>
