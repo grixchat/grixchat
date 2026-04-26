@@ -66,7 +66,6 @@ export default function SettingsScreen() {
       items: [
         { icon: Bell, label: 'Notifications', sub: 'Message, group & call tones', color: 'text-zinc-900', onClick: () => navigate('/notifications-settings') },
         { icon: Clock, label: 'Time spent', sub: 'Manage your time on GrixChat', color: 'text-zinc-900', onClick: () => navigate('/time-spent') },
-        { icon: Monitor, label: 'App Theme', sub: 'Dark mode, light mode', color: 'text-zinc-900', onClick: () => navigate('/app-preferences') },
       ]
     },
     {

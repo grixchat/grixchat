@@ -210,10 +210,6 @@ export default function UserProfileScreen() {
 
             {/* Stats Box (Single) */}
             <div className="flex-1 bg-[var(--box-bg)] rounded-xl p-2 flex justify-between items-center min-h-[60px]">
-              <div className="flex flex-col items-center flex-1">
-                <span className="text-sm font-bold text-[var(--box-text)]">0</span>
-                <span className="text-[10px] text-[var(--box-text)] opacity-80 uppercase font-bold tracking-wider">Reels</span>
-              </div>
               <button 
                 onClick={() => !isPrivate && navigate(`/user/${userId}/followers`)}
                 className={`flex flex-col items-center flex-1 active:scale-95 transition-all ${isPrivate ? 'opacity-50 cursor-default' : ''}`}

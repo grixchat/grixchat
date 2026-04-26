@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MoreVertical, Send, Plus, Smile, Paperclip, Mic, X, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { aiService, AIMessage } from '../../services/AIService.ts';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function GrixAIScreen() {
   const navigate = useNavigate();
+  const { chatBackground } = useTheme();
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -91,7 +93,7 @@ export default function GrixAIScreen() {
       {/* Messages Area */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 bg-[var(--bg-chat)]"
+        className={`flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 ${chatBackground || 'bg-[var(--bg-chat)]'}`}
       >
         {messages.map((msg) => (
           <div 

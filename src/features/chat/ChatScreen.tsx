@@ -16,7 +16,8 @@ import {
   Download,
   ShieldAlert
 } from 'lucide-react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useTheme } from '../../contexts/ThemeContext';
 import ChatHeader from '../../components/layout/ChatHeader.tsx';
 import ChatBottom from '../../components/layout/ChatBottom.tsx';
 import { 
@@ -326,6 +327,8 @@ export default function ChatScreen() {
     }
   };
 
+  const { theme, setTheme, chatBackground, resolvedTheme } = useTheme();
+
   return (
     <div className="flex flex-col h-full w-full max-w-full bg-[var(--bg-main)] overflow-hidden relative">
       {/* Header */}
@@ -351,7 +354,7 @@ export default function ChatScreen() {
       <div 
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 bg-[var(--bg-main)] relative no-scrollbar touch-pan-y w-full max-w-full" 
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 relative no-scrollbar touch-pan-y w-full max-w-full ${chatBackground || 'bg-[var(--bg-main)]'}`} 
         onClick={() => { setActiveMessageMenu(null); setVisibleButtonsId(null); }}
       >
         {/* WhatsApp-style pattern overlay */}
