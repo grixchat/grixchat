@@ -12,17 +12,17 @@ import SplashScreen from './components/SplashScreen';
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
-    <div className="h-[100dvh] flex flex-col items-center justify-center bg-zinc-50 p-6 text-center">
-      <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+    <div className="h-[100dvh] flex flex-col items-center justify-center bg-[var(--bg-main)] p-6 text-center">
+      <div className="w-16 h-16 bg-red-100/10 text-red-600 rounded-full flex items-center justify-center mb-4">
         <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
           <img src={APP_CONFIG.LOGO_URL} className="w-10 h-10 object-contain grayscale opacity-50" alt="Error" />
         </motion.div>
       </div>
-      <h2 className="text-xl font-bold text-zinc-900 mb-2">Something went wrong</h2>
-      <p className="text-sm text-zinc-500 mb-6 max-w-xs">{error.message}</p>
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Something went wrong</h2>
+      <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-xs">{error.message}</p>
       <button 
         onClick={() => window.location.href = '/'}
-        className="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-100 active:scale-95 transition-all"
+        className="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
       >
         Restart App
       </button>
@@ -41,6 +41,7 @@ const ArchivedChatScreen = React.lazy(() => import('./features/chat').then(m => 
 const HideChatSettings = React.lazy(() => import('./features/chat').then(m => ({ default: m.HideChatSettings })));
 const SearchUserScreen = React.lazy(() => import('./features/chat/SearchUserScreen'));
 const GrixAIScreen = React.lazy(() => import('./features/chat/GrixAIScreen'));
+const ChatSettingsScreen = React.lazy(() => import('./features/chat/ChatSettingsScreen'));
 
 const StoryMakerScreen = React.lazy(() => import('./features/stories').then(m => ({ default: m.StoryMakerScreen })));
 const StoryWatcherScreen = React.lazy(() => import('./features/stories').then(m => ({ default: m.StoryWatcherScreen })));
@@ -228,7 +229,7 @@ export default function App() {
               {user && <NotificationHandler />}
               <div className="flex-1 h-full relative overflow-hidden">
               <React.Suspense fallback={
-                  <div className="h-full flex items-center justify-center bg-zinc-50">
+                  <div className="h-full flex items-center justify-center bg-[var(--bg-main)]">
                     <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 }>
@@ -250,6 +251,7 @@ export default function App() {
                       <Route element={<ChatLayout />}>
                         <Route path="/chat/grix-ai" element={user ? <GrixAIScreen /> : <Navigate to="/login" />} />
                         <Route path="/chat/:id" element={user ? <ChatScreen /> : <Navigate to="/login" />} />
+                        <Route path="/chat/:id/settings" element={user ? <ChatSettingsScreen /> : <Navigate to="/login" />} />
                       </Route>
                       <Route path="/calls" element={user ? <CallsTab /> : <Navigate to="/login" />} />
                       <Route path="/profile" element={user ? <ProfileTab /> : <Navigate to="/login" />} />

@@ -9,18 +9,18 @@ export default function AppPreferencesScreen() {
   const { theme, setTheme, chatBackground, setChatBackground, t } = useTheme();
 
   const themes: { id: Theme; label: string; sub: string }[] = [
-    { id: 'system', label: 'Use system settings', sub: 'Match your device appearance' },
-    { id: 'light', label: 'Light Theme', sub: 'Clean light mode with white headers' },
-    { id: 'dark', label: 'Dark Theme', sub: 'True black mode for OLED displays' }
+    { id: 'system', label: 'System Default', sub: 'Automatically matches your device appearance' },
+    { id: 'light', label: 'Light Theme', sub: 'Bright and clean appearance' },
+    { id: 'dark', label: 'Dark Theme', sub: 'Deep black for OLED and low light' }
   ];
 
   const backgrounds = [
-    { id: '', label: 'Default', color: 'bg-zinc-200' },
-    { id: 'bg-blue-500/10', label: 'Sky Blue', color: 'bg-blue-500' },
-    { id: 'bg-emerald-500/10', label: 'Emerald', color: 'bg-emerald-500' },
-    { id: 'bg-rose-500/10', label: 'Soft Rose', color: 'bg-rose-500' },
-    { id: 'bg-amber-500/10', label: 'Golden', color: 'bg-amber-500' },
-    { id: 'bg-purple-500/10', label: 'Deep Purple', color: 'bg-purple-500' },
+    { id: '', label: 'Classic', color: 'bg-zinc-200' },
+    { id: 'bg-blue-500/10', label: 'Sky', color: 'bg-blue-500' },
+    { id: 'bg-emerald-500/10', label: 'Aurora', color: 'bg-emerald-500' },
+    { id: 'bg-rose-500/10', label: 'Rose', color: 'bg-rose-500' },
+    { id: 'bg-amber-500/10', label: 'Sunset', color: 'bg-amber-500' },
+    { id: 'bg-indigo-500/10', label: 'Indigo', color: 'bg-indigo-500' },
   ];
 
   return (

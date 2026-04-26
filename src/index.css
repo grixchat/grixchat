@@ -30,8 +30,8 @@
     --text-secondary: #475569;
     --border-color: #f1f5f9;
     --accent-color: #0095f6;
-    --bubble-own: #e7f3ff;
-    --bubble-other: #f1f5f9;
+    --bubble-own: #e5e5e5;
+    --bubble-other: #e5e5e5;
     --bubble-text-own: #1e293b;
     --bubble-text-other: #1e293b;
     --header-bg: #ffffff;
@@ -55,7 +55,7 @@
     --text-secondary: #a1a1aa;
     --border-color: #1a1a1a;
     --accent-color: #0095f6;
-    --bubble-own: #0095f6;
+    --bubble-own: #262626;
     --bubble-other: #262626;
     --bubble-text-own: #ffffff;
     --bubble-text-other: #ffffff;

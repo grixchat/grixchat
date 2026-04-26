@@ -80,6 +80,9 @@ export default function PostCard({ post, currentUserData }: PostCardProps) {
       }
     } catch (err) {
       console.error("Error liking post:", err);
+      // Revert UI on error
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev + 1 : Math.max(0, prev - 1));
     }
   };
 
@@ -139,7 +142,7 @@ export default function PostCard({ post, currentUserData }: PostCardProps) {
   };
 
   return (
-    <div className="flex flex-col border-b border-[var(--border-color)]/20 pb-2">
+    <div className="flex flex-col border-b border-[var(--border-color)]/20 pb-4">
       {/* Post Header */}
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center gap-2.5" onClick={() => navigate(`/user/${post.userId}`)}>
@@ -168,7 +171,7 @@ export default function PostCard({ post, currentUserData }: PostCardProps) {
         </div>
         <button 
           onClick={() => setShowOptions(!showOptions)}
-          className="text-[var(--text-secondary)] p-1.5 hover:bg-black/5 rounded-full transition-colors"
+          className="text-[var(--text-secondary)] p-1.5 hover:bg-[var(--text-primary)]/5 rounded-full transition-colors"
         >
           <MoreVertical size={16} />
         </button>
@@ -194,7 +197,7 @@ export default function PostCard({ post, currentUserData }: PostCardProps) {
             onClick={handleLike}
             className={`transition-all active:scale-125 ${isLiked ? 'text-red-500' : 'text-[var(--text-primary)]'}`}
           >
-            <Heart size={24} fill={isLiked ? "currentColor" : "none"} strokeWidth={isLiked ? 0 : 2} />
+            <Heart size={24} fill={isLiked ? "red" : "none"} />
           </button>
           <button 
             onClick={() => navigate(`/posts/${post.id}/comments`)}
@@ -211,9 +214,9 @@ export default function PostCard({ post, currentUserData }: PostCardProps) {
         </div>
         <button 
           onClick={handleSave}
-          className={`transition-all active:scale-125 ${isSaved ? 'text-[var(--text-primary)]' : 'text-[var(--text-primary)]'}`}
+          className={`transition-all active:scale-125 text-[var(--text-primary)]`}
         >
-          <Bookmark size={24} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2} />
+          <Bookmark size={24} fill={isSaved ? "currentColor" : "none"} />
         </button>
       </div>
 

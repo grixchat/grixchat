@@ -55,84 +55,84 @@ export default function SettingsScreen() {
 
   const sections = [
     {
-      title: 'Account settings',
+      title: 'Your Account',
       items: [
-        { icon: UserCircle, label: 'Account settings', sub: 'Personal details, password, security', color: 'text-zinc-900', onClick: () => navigate('/account-settings') },
-        { icon: Lock, label: 'App Lock', sub: 'Secure your app with a PIN', color: 'text-zinc-900', onClick: () => navigate('/app-lock') },
+        { icon: UserCircle, label: 'Account', sub: 'Privacy, security, change email or phone', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/account-settings') },
+        { icon: Lock, label: 'App Lock', sub: 'Secure your app with a PIN', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/app-lock') },
       ]
     },
     {
       title: 'How you use GrixChat',
       items: [
-        { icon: Bell, label: 'Notifications', sub: 'Message, group & call tones', color: 'text-zinc-900', onClick: () => navigate('/notifications-settings') },
-        { icon: Clock, label: 'Time spent', sub: 'Manage your time on GrixChat', color: 'text-zinc-900', onClick: () => navigate('/time-spent') },
+        { icon: Bell, label: 'Notifications', sub: 'Message, group & call tones', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/notifications-settings') },
+        { icon: Clock, label: 'Time spent', sub: 'Manage your time on GrixChat', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/time-spent') },
       ]
     },
     {
       title: 'What you see',
       items: [
-        { icon: Star, label: 'Favorites', color: 'text-zinc-900', onClick: () => navigate('/favorites') },
-        { icon: VolumeX, label: 'Muted accounts', color: 'text-zinc-900', onClick: () => navigate('/muted-accounts') },
-        { icon: EyeOff, label: 'Suggested content', color: 'text-zinc-900' },
-        { icon: Heart, label: 'Like counts', color: 'text-zinc-900' },
+        { icon: Star, label: 'Favorites', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/favorites') },
+        { icon: VolumeX, label: 'Muted accounts', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/muted-accounts') },
+        { icon: EyeOff, label: 'Suggested content', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: Heart, label: 'Like counts', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'Who can see your content',
       items: [
-        { icon: Lock, label: 'Account privacy', sub: userData?.isPrivate ? 'Private' : 'Public', color: 'text-zinc-900', onClick: () => navigate('/privacy-settings') },
-        { icon: Star, label: 'Close Friends', color: 'text-zinc-900' },
-        { icon: UserMinus, label: 'Blocked', color: 'text-zinc-900', onClick: () => navigate('/blocked-accounts') },
-        { icon: EyeOff, label: 'Hide story and live', color: 'text-zinc-900' },
+        { icon: Lock, label: 'Account privacy', sub: userData?.isPrivate ? 'Private' : 'Public', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/privacy-settings') },
+        { icon: Star, label: 'Close Friends', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: UserMinus, label: 'Blocked', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/blocked-accounts') },
+        { icon: EyeOff, label: 'Hide story and live', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'How others can interact with you',
       items: [
-        { icon: MessageCircle, label: 'Messages and story replies', color: 'text-zinc-900' },
-        { icon: AtSign, label: 'Tags and mentions', color: 'text-zinc-900' },
-        { icon: MessageSquare, label: 'Comments', color: 'text-zinc-900' },
-        { icon: Share2, label: 'Sharing and remixes', color: 'text-zinc-900' },
-        { icon: UserCheck, label: 'Restricted accounts', color: 'text-zinc-900' },
-        { icon: EyeOff, label: 'Hidden words', color: 'text-zinc-900' },
+        { icon: MessageCircle, label: 'Messages and story replies', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: AtSign, label: 'Tags and mentions', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: MessageSquare, label: 'Comments', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: Share2, label: 'Sharing and remixes', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: UserCheck, label: 'Restricted accounts', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: EyeOff, label: 'Hidden words', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'Your app and media',
       items: [
-        { icon: Download, label: 'Archiving and downloading', color: 'text-zinc-900' },
-        { icon: Accessibility, label: 'Accessibility', color: 'text-zinc-900', onClick: () => navigate('/accessibility-settings') },
-        { icon: Languages, label: 'Language', color: 'text-zinc-900', onClick: () => navigate('/language-settings') },
-        { icon: Smartphone, label: 'App Preferences', sub: 'Theme, cache, and more', color: 'text-zinc-900', onClick: () => navigate('/app-preferences') },
-        { icon: Database, label: 'Data usage and media quality', color: 'text-zinc-900' },
-        { icon: Globe, label: 'Website permissions', color: 'text-zinc-900' },
+        { icon: Download, label: 'Archiving and downloading', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: Accessibility, label: 'Accessibility', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/accessibility-settings') },
+        { icon: Languages, label: 'Language', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/language-settings') },
+        { icon: Smartphone, label: 'App Preferences', sub: 'Theme, cache, and more', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/app-preferences') },
+        { icon: Database, label: 'Data usage and media quality', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: Globe, label: 'Website permissions', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'For families',
       items: [
-        { icon: Users, label: 'Supervision', color: 'text-zinc-900' },
+        { icon: Users, label: 'Supervision', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'For professionals',
       items: [
-        { icon: Monitor, label: 'Account type and tools', color: 'text-zinc-900' },
+        { icon: Monitor, label: 'Account type and tools', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'Your orders and payments',
       items: [
-        { icon: CreditCard, label: 'Orders and payments', color: 'text-zinc-900' },
+        { icon: CreditCard, label: 'Orders and payments', color: 'bg-blue-500/10 text-blue-500' },
       ]
     },
     {
       title: 'More info and support',
       items: [
-        { icon: HelpCircle, label: 'Help', color: 'text-zinc-900', onClick: () => navigate('/help') },
-        { icon: Shield, label: 'Privacy Center', color: 'text-zinc-900' },
-        { icon: UserCircle, label: 'Account Status', color: 'text-zinc-900' },
-        { icon: Info, label: 'About', color: 'text-zinc-900', onClick: () => navigate('/app-info') },
+        { icon: HelpCircle, label: 'Help', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/help') },
+        { icon: Shield, label: 'Privacy Center', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: UserCircle, label: 'Account Status', color: 'bg-blue-500/10 text-blue-500' },
+        { icon: Info, label: 'About', color: 'bg-blue-500/10 text-blue-500', onClick: () => navigate('/app-info') },
       ]
     }
   ];
@@ -172,8 +172,8 @@ export default function SettingsScreen() {
                         index !== section.items.length - 1 ? 'border-b border-[var(--border-color)]/30' : ''
                       }`}
                     >
-                      <div className={`${item.color} group-active:scale-90 transition-transform`}>
-                        <item.icon size={22} strokeWidth={1.5} />
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.color} group-active:scale-95 transition-transform shrink-0`}>
+                        <item.icon size={18} strokeWidth={2} />
                       </div>
                       <div className="flex-1 text-left">
                         <h4 className="text-[14px] font-bold text-[var(--text-primary)]">{item.label}</h4>

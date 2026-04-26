@@ -6,13 +6,13 @@ export type Language = 'hi-in' | 'en-us';
 
 const translations = {
   'hi-in': {
-    settings: 'सेटिंग्स',
-    preferences: 'पसंद',
-    language: 'भाषा',
-    theme: 'थीम',
-    chats: 'चैट',
-    status: 'स्टेटस',
-    calls: 'कॉल',
+    settings: 'Settings',
+    preferences: 'Preferences',
+    language: 'Language',
+    theme: 'Theme',
+    chats: 'Chats',
+    status: 'Status',
+    calls: 'Calls',
   },
   'en-us': {
     settings: 'Settings',

@@ -7,7 +7,7 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ }: SplashScreenProps) {
   return (
-    <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999] font-sans overflow-hidden">
+    <div className="fixed inset-0 bg-[var(--bg-main)] flex flex-col items-center justify-center z-[9999] font-sans overflow-hidden">
       {/* Center Logo */}
       <div className="flex-1 flex flex-col items-center justify-center gap-4">
         <motion.div
@@ -26,7 +26,7 @@ export default function SplashScreen({ }: SplashScreenProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-3xl font-bold tracking-tight text-zinc-900"
+          className="text-3xl font-bold tracking-tight text-[var(--text-primary)]"
         >
           GrixChat
         </motion.span>

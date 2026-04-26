@@ -61,12 +61,12 @@ export default function NotificationsScreen() {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] font-sans">
       <div className="h-14 flex items-center px-4 border-b border-[var(--border-color)]/30 shrink-0 sticky top-0 bg-[var(--bg-main)] z-10">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-black/5">
+        <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-[var(--text-primary)]/5">
           <ArrowLeft size={24} />
         </button>
         <div className="ml-4 flex items-center gap-2">
           <Bell size={20} className="text-blue-500" />
-          <span className="font-bold text-lg">Notifications</span>
+          <span className="font-bold text-lg text-[var(--text-primary)]">Notifications</span>
         </div>
       </div>
       

@@ -123,79 +123,79 @@ export default function SignupScreen() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-white flex flex-col items-center relative font-sans">
+    <div className="h-full overflow-y-auto bg-[var(--bg-main)] flex flex-col items-center relative font-sans">
       <div className="w-full px-8 pt-16 pb-12 z-10 flex flex-col min-h-full relative">
         {/* Branding Overlay - Absolute to not push content down */}
         <div className="absolute top-6 left-0 right-0 flex items-center justify-center gap-2">
-          <div className="bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100 flex items-center gap-2 shadow-sm">
+          <div className="bg-[var(--bg-card)] px-3 py-1.5 rounded-full border border-[var(--border-color)] flex items-center gap-2 shadow-sm">
             <img 
               src={APP_CONFIG.LOGO_URL} 
               alt="Logo" 
               className="w-4 h-4 object-contain"
               referrerPolicy="no-referrer"
             />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">GrixChat</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-primary)]">GrixChat</span>
           </div>
         </div>
 
         {/* Header Area */}
         <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold text-zinc-900 mb-2">Sign up Account</h2>
-          <p className="text-zinc-500 text-xs leading-relaxed max-w-[240px] mx-auto">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Sign up Account</h2>
+          <p className="text-[var(--text-secondary)] text-xs leading-relaxed max-w-[240px] mx-auto">
             Create an account to start chatting, sharing stories, and connecting with GrixChat.
           </p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Name</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Name</label>
             <input 
               type="text" 
               placeholder="Enter you name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+              className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Email</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Email</label>
             <input 
               type="email" 
               placeholder="Enter you email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+              className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Phone Number</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Phone Number</label>
             <input 
               type="tel" 
               placeholder="Enter your phone number"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
-              className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+              className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Username</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Username</label>
             <div className="relative">
               <input 
                 type="text" 
                 placeholder="Choose a username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+                className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
                 required
               />
               <div className="group absolute right-5 top-1/2 -translate-y-1/2">
-                <HelpCircle size={18} className="text-zinc-400 cursor-help" />
+                <HelpCircle size={18} className="text-[var(--text-secondary)] cursor-help" />
                 <span className="hidden group-hover:block absolute right-0 bottom-full mb-2 w-48 p-2 bg-zinc-800 text-white text-[10px] rounded-lg shadow-xl z-50">
                   Only small letters (a-z), numbers (0-9), and underscores (_) allowed. No spaces.
                 </span>
@@ -204,20 +204,20 @@ export default function SignupScreen() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Password</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Password</label>
             <div className="relative">
               <input 
                 type={showPassword ? "text" : "password"} 
                 placeholder="Enter you password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+                className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
                 required
               />
               <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -225,20 +225,20 @@ export default function SignupScreen() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-800 ml-1">Confirm Password</label>
+            <label className="text-xs font-bold text-[var(--text-primary)] ml-1">Confirm Password</label>
             <div className="relative">
               <input 
                 type={showConfirmPassword ? "text" : "password"} 
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-5 py-4 bg-zinc-100 border-none rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-zinc-400"
+                className="w-full px-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#375a7f]/20 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"
                 required
               />
               <button 
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -250,9 +250,9 @@ export default function SignupScreen() {
               <input 
                 type="checkbox" 
                 id="remember" 
-                className="w-4 h-4 rounded border-zinc-300 text-[#375a7f] focus:ring-[#375a7f] accent-[#375a7f]" 
+                className="w-4 h-4 rounded border-[var(--border-color)] text-[#375a7f] focus:ring-[#375a7f] accent-[#375a7f] bg-[var(--bg-card)]" 
               />
-              <label htmlFor="remember" className="text-xs font-bold text-zinc-800 cursor-pointer">Remember me</label>
+              <label htmlFor="remember" className="text-xs font-bold text-[var(--text-primary)] cursor-pointer">Remember me</label>
             </div>
           </div>
           
@@ -269,7 +269,7 @@ export default function SignupScreen() {
             <motion.p 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-red-500 text-xs font-bold text-center bg-red-50 py-2 rounded-lg"
+              className="text-red-500 text-xs font-bold text-center bg-red-500/10 py-2 rounded-lg"
             >
               {error}
             </motion.p>
@@ -279,7 +279,7 @@ export default function SignupScreen() {
             <button 
               type="button"
               onClick={() => setShowSocial(!showSocial)}
-              className="text-[11px] font-bold text-zinc-400 hover:text-zinc-500 transition-colors tracking-tight"
+              className="text-[11px] font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors tracking-tight"
             >
               {showSocial ? (
                 <>I'm not using grixchat on web browser <span className="text-blue-600">click here</span></>
@@ -301,7 +301,7 @@ export default function SignupScreen() {
                   type="button"
                   onClick={handleGoogleSignUp}
                   disabled={loading || googleLoading || githubLoading}
-                  className="w-full flex items-center justify-center gap-3 bg-zinc-100 py-4 rounded-2xl text-sm font-bold text-zinc-800 hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-3 bg-[var(--bg-card)] border border-[var(--border-color)] py-4 rounded-2xl text-sm font-bold text-[var(--text-primary)] hover:bg-zinc-50/10 transition-all active:scale-[0.98]"
                 >
                   <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" />
                   <span>{googleLoading ? 'Connecting...' : 'Continue with Google'}</span>
@@ -311,7 +311,7 @@ export default function SignupScreen() {
                   type="button"
                   onClick={handleGithubSignUp}
                   disabled={loading || googleLoading || githubLoading}
-                  className="w-full flex items-center justify-center gap-3 bg-zinc-100 py-4 rounded-2xl text-sm font-bold text-zinc-800 hover:bg-zinc-200 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-3 bg-[var(--bg-card)] border border-[var(--border-color)] py-4 rounded-2xl text-sm font-bold text-[var(--text-primary)] hover:bg-zinc-50/10 transition-all active:scale-[0.98]"
                 >
                   <Github size={20} />
                   <span>{githubLoading ? 'Connecting...' : 'Continue with GitHub'}</span>
@@ -321,8 +321,8 @@ export default function SignupScreen() {
           </AnimatePresence>
 
           <div className="text-center pt-8">
-            <span className="text-xs font-bold text-zinc-500">Already have an account? </span>
-            <Link to="/login" className="text-xs font-bold text-zinc-800 hover:underline">Sign in</Link>
+            <span className="text-xs font-bold text-[var(--text-secondary)]">Already have an account? </span>
+            <Link to="/login" className="text-xs font-bold text-[var(--text-primary)] hover:underline">Sign in</Link>
           </div>
         </form>
       </div>

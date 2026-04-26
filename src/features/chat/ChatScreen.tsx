@@ -69,6 +69,7 @@ export default function ChatScreen() {
   const [newMessage, setNewMessage] = useState('');
   const [receiverActiveChatId, setReceiverActiveChatId] = useState<string | null>(null);
   const [receiverLastSeen, setReceiverLastSeen] = useState<any>(null);
+  const [chatSettings, setChatSettings] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -169,6 +170,15 @@ export default function ChatScreen() {
       }
     });
 
+    // Fetch chat settings for current user's preferences for this receiver
+    const settingsUnsubscribe = onSnapshot(doc(db, "users", auth.currentUser.uid, "chatSettings", receiverId), (snap) => {
+      if (snap.exists()) {
+        setChatSettings(snap.data());
+      } else {
+        setChatSettings(null);
+      }
+    });
+
     if (auth.currentUser) {
       const myStatusRef = rtdbRef(rtdb, `/status/${auth.currentUser.uid}`);
       update(myStatusRef, { activeChatId: receiverId });
@@ -177,6 +187,7 @@ export default function ChatScreen() {
     return () => {
       receiverUnsubscribe();
       statusUnsubscribe();
+      settingsUnsubscribe();
       if (auth.currentUser) {
         const myStatusRef = rtdbRef(rtdb, `/status/${auth.currentUser.uid}`);
         update(myStatusRef, { activeChatId: null });
@@ -333,7 +344,11 @@ export default function ChatScreen() {
     <div className="flex flex-col h-full w-full max-w-full bg-[var(--bg-main)] overflow-hidden relative">
       {/* Header */}
       <ChatHeader 
-        receiver={receiver}
+        receiver={{
+          ...receiver,
+          fullName: chatSettings?.nickname || receiver?.fullName,
+          photoURL: chatSettings?.customPhotoUrl || receiver?.photoURL
+        }}
         receiverId={receiverId}
         formatLastSeen={() => formatLastSeen(receiverLastSeen || receiver?.lastSeen)}
         showOptions={showOptions}

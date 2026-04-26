@@ -26,11 +26,11 @@ export default function TabBottom() {
   }, []);
   
   const navItems = [
-    { icon: Home, path: '/', label: 'Home' },
-    { icon: Clapperboard, path: '/reels', label: 'Reels' },
-    { icon: MessageCircle, path: '/chats', label: 'Chats', badge: unreadCount },
-    { icon: LayoutGrid, path: '/hub', label: 'Hub' },
-    { icon: UserCircle, path: '/profile', label: 'Profile' },
+    { icon: Home, path: '/', label: 'Home', activeColor: 'text-blue-500' },
+    { icon: Clapperboard, path: '/reels', label: 'Reels', activeColor: 'text-blue-500' },
+    { icon: MessageCircle, path: '/chats', label: 'Chats', badge: unreadCount, activeColor: 'text-blue-500' },
+    { icon: LayoutGrid, path: '/hub', label: 'Hub', activeColor: 'text-blue-500' },
+    { icon: UserCircle, path: '/profile', label: 'Profile', activeColor: 'text-blue-500' },
   ];
 
   return (
@@ -51,11 +51,13 @@ export default function TabBottom() {
                   scale: isActive ? 1.15 : 1,
                   y: isActive ? -1 : 0
                 }}
-                className={`transition-colors duration-300 ${isActive ? 'text-[var(--header-text)]' : 'text-[var(--header-text)]/50 group-hover:text-[var(--header-text)]'}`}
+                className={`transition-colors duration-300 ${isActive ? item.activeColor : 'text-[var(--header-text)]/50 group-hover:text-[var(--header-text)]'}`}
               >
                 <Icon 
                   size={24} 
                   strokeWidth={isActive ? 2.5 : 2}
+                  fill={isActive ? 'currentColor' : 'none'}
+                  fillOpacity={isActive ? 0.15 : 0}
                 />
               </motion.div>
               

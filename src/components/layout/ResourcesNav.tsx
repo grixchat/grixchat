@@ -78,7 +78,7 @@ export default function ResourcesNav({ tab }: ResourcesNavProps) {
                 onClick={() => setActiveFilter(tab, filter.id)}
                 className={`px-3.5 py-1 rounded-full text-[12px] font-semibold transition-all whitespace-nowrap ${
                   isActive 
-                    ? 'bg-[var(--primary)] text-white' 
+                    ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/20' 
                     : 'bg-[var(--bg-main)] text-[var(--text-secondary)] hover:bg-[var(--border-color)]'
                 }`}
               >
@@ -103,7 +103,7 @@ export default function ResourcesNav({ tab }: ResourcesNavProps) {
               key={filter.id}
               onClick={() => setActiveFilter(tab, filter.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-3.5 transition-all relative min-w-0 ${
-                isActive ? 'text-[var(--header-text)]' : 'text-[var(--header-text)]/60 hover:text-[var(--header-text)]'
+                isActive ? 'text-blue-500' : 'text-[var(--header-text)]/60 hover:text-[var(--header-text)]'
               }`}
             >
               <Icon size={16} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
@@ -114,7 +114,7 @@ export default function ResourcesNav({ tab }: ResourcesNavProps) {
               {isActive && (
                 <motion.div 
                   layoutId={`nav-indicator-${tab}`}
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--header-text)]"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"
                   initial={false}
                   transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 />

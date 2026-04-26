@@ -45,39 +45,39 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <div className="h-full overflow-y-auto bg-white flex flex-col items-center relative font-sans">
+    <div className="h-full overflow-y-auto bg-[var(--bg-main)] flex flex-col items-center relative font-sans">
       <div className="w-full px-8 pt-16 pb-12 z-10 flex flex-col min-h-full relative">
         {/* Branding Overlay */}
         <div className="absolute top-6 left-0 right-0 flex items-center justify-center gap-2">
-          <div className="bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100 flex items-center gap-2 shadow-sm">
+          <div className="bg-[var(--bg-card)] px-3 py-1.5 rounded-full border border-[var(--border-color)] flex items-center gap-2 shadow-sm">
             <img 
               src={APP_CONFIG.LOGO_URL} 
               alt="Logo" 
               className="w-4 h-4 object-contain"
               referrerPolicy="no-referrer"
             />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">GrixChat</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-primary)]">GrixChat</span>
           </div>
         </div>
 
         {/* Back Button (Sign out) */}
         <button 
           onClick={handleLogout}
-          className="absolute top-6 left-8 py-1.5 flex items-center text-xs font-bold text-zinc-800 hover:text-zinc-500 transition-colors"
+          className="absolute top-6 left-8 py-1.5 flex items-center text-xs font-bold text-[var(--text-primary)] hover:text-[var(--text-secondary)] transition-colors"
         >
           Back
         </button>
 
         <div className="text-center mb-10 mt-8">
-          <h2 className="text-2xl font-bold text-zinc-900 mb-2">Verify your email</h2>
-          <p className="text-zinc-500 text-xs leading-relaxed max-w-[240px] mx-auto">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Verify your email</h2>
+          <p className="text-[var(--text-secondary)] text-xs leading-relaxed max-w-[240px] mx-auto">
             We've sent a verification link to <span className="font-bold text-[#375a7f]">{auth.currentUser?.email}</span>. Please click the link to continue.
           </p>
         </div>
 
         <div className="space-y-6">
-          <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
-            <p className="text-[10px] text-amber-700 font-bold text-center leading-relaxed">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+            <p className="text-[10px] text-amber-500 font-bold text-center leading-relaxed">
               Don't forget to check your <span className="uppercase underline">Spam folder</span> if you don't see it!
             </p>
           </div>
@@ -86,7 +86,7 @@ export default function VerifyEmailScreen() {
             <motion.p 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-emerald-600 text-xs font-bold text-center bg-emerald-50 py-3 rounded-xl"
+              className="text-emerald-600 text-xs font-bold text-center bg-emerald-500/10 py-3 rounded-xl"
             >
               {message}
             </motion.p>
@@ -96,7 +96,7 @@ export default function VerifyEmailScreen() {
             <motion.p 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-red-500 text-xs font-bold text-center bg-red-50 py-3 rounded-xl"
+              className="text-red-500 text-xs font-bold text-center bg-red-500/10 py-3 rounded-xl"
             >
               {error}
             </motion.p>

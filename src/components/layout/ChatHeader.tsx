@@ -80,7 +80,7 @@ export default function ChatHeader({
         </button>
         <div 
           className="flex items-center gap-2 cursor-pointer min-w-0" 
-          onClick={() => receiverId === 'gx-ai' ? navigate('/profile/gx-ai') : navigate(`/user/${receiverId}`)}
+          onClick={() => receiverId === 'gx-ai' ? navigate('/profile/gx-ai') : navigate(`/chat/${receiverId}/settings`)}
         >
           <div className="relative shrink-0">
             <img 

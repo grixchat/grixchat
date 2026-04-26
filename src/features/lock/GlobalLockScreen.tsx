@@ -83,8 +83,8 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
             }}
             className={`h-16 rounded-2xl flex items-center justify-center text-xl font-black transition-all active:scale-90 ${
               key === 'info' 
-              ? 'bg-zinc-100 text-zinc-400' 
-              : 'bg-white text-zinc-900 shadow-sm border border-zinc-100'
+              ? 'bg-[var(--bg-card)] text-[var(--text-secondary)]' 
+              : 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm border border-[var(--border-color)]'
             }`}
           >
             {key === 'delete' ? <Delete size={24} /> : key === 'info' ? <Info size={24} /> : key}
@@ -95,7 +95,7 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-[#F8F9FA] flex flex-col font-sans overflow-hidden">
+    <div className="fixed inset-0 z-[1000] bg-[var(--bg-main)] flex flex-col font-sans overflow-hidden">
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         <motion.div 
           initial={{ y: 0, opacity: 0 }}
@@ -106,10 +106,10 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
             <Lock size={40} />
           </div>
           
-          <h2 className="text-2xl font-black text-zinc-900 uppercase tracking-tight mb-2 text-center">
+          <h2 className="text-2xl font-black text-[var(--text-primary)] uppercase tracking-tight mb-2 text-center">
             App Locked
           </h2>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-12 text-center">
+          <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-[0.2em] mb-12 text-center">
             Enter your security {isNumeric ? 'PIN' : 'Password'} to continue
           </p>
 
@@ -122,7 +122,7 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
                     className={`w-5 h-5 rounded-full border-2 transition-all duration-300 ${
                       value.length > i 
                       ? 'bg-primary border-primary scale-110 shadow-lg shadow-[var(--primary-shadow)]' 
-                      : 'border-zinc-200'
+                      : 'border-[var(--border-color)]'
                     }`}
                   />
                 ))}
@@ -135,13 +135,13 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
                     value={value}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-white border border-zinc-100 rounded-2xl px-6 py-5 text-center text-xl font-black tracking-widest outline-none focus:border-primary shadow-sm"
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl px-6 py-5 text-center text-xl font-black tracking-widest outline-none focus:border-primary shadow-sm text-[var(--text-primary)]"
                     placeholder="••••••••"
                     autoFocus
                   />
                   <button 
                     onClick={() => setShowHelp(true)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-primary transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-primary transition-colors"
                   >
                     <Info size={20} />
                   </button>
@@ -171,10 +171,10 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
 
       <div className="p-12 flex flex-col items-center gap-2 opacity-30">
         <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-zinc-900" />
-          <span className="text-zinc-900 text-[10px] font-black tracking-[0.2em] uppercase">GrixChat Security</span>
+          <ShieldCheck size={16} className="text-[var(--text-primary)]" />
+          <span className="text-[var(--text-primary)] text-[10px] font-black tracking-[0.2em] uppercase">GrixChat Security</span>
         </div>
-        <span className="text-zinc-500 text-[8px] uppercase tracking-widest">End-to-End Local Protection</span>
+        <span className="text-[var(--text-secondary)] text-[8px] uppercase tracking-widest">End-to-End Local Protection</span>
       </div>
 
       {/* Help Modal */}
@@ -184,39 +184,39 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1100] bg-zinc-900/60 backdrop-blur-sm flex items-end justify-center p-4"
+            className="fixed inset-0 z-[1100] bg-black/60 backdrop-blur-sm flex items-end justify-center p-4"
           >
             <motion.div 
               initial={{ y: 100 }}
               animate={{ y: 0 }}
               exit={{ y: 100 }}
-              className="w-full bg-white rounded-[2.5rem] p-8 shadow-2xl"
+              className="w-full bg-[var(--bg-card)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border-color)]"
             >
               <div className="flex justify-between items-center mb-6">
-                <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
+                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
                   <ShieldAlert size={24} />
                 </div>
-                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-zinc-50 rounded-full transition-colors">
-                  <X size={24} className="text-zinc-400" />
+                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-zinc-50/10 rounded-full transition-colors">
+                  <X size={24} className="text-[var(--text-secondary)]" />
                 </button>
               </div>
 
-              <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-4">Forgot Password?</h3>
+              <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight mb-4">Forgot Password?</h3>
               
               <div className="space-y-4 mb-8">
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-50/10 flex items-center justify-center text-[var(--text-secondary)] shrink-0">
                     <LogOut size={16} />
                   </div>
-                  <p className="text-[11px] text-zinc-500 font-bold leading-relaxed">
+                  <p className="text-[11px] text-[var(--text-secondary)] font-bold leading-relaxed">
                     Uninstall the app and download it again from the official source.
                   </p>
                 </div>
                 <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-50/10 flex items-center justify-center text-[var(--text-secondary)] shrink-0">
                     <RefreshCw size={16} />
                   </div>
-                  <p className="text-[11px] text-zinc-500 font-bold leading-relaxed">
+                  <p className="text-[11px] text-[var(--text-secondary)] font-bold leading-relaxed">
                     Alternatively, clear the app data from your device settings and relogin.
                   </p>
                 </div>
@@ -224,7 +224,7 @@ export default function GlobalLockScreen({ onUnlock }: GlobalLockScreenProps) {
 
               <button 
                 onClick={() => setShowHelp(false)}
-                className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all"
+                className="w-full bg-[var(--text-primary)] text-[var(--bg-main)] py-4 rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all"
               >
                 Got it
               </button>
