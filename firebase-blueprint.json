@@ -61,9 +61,38 @@
         "following": { "type": "array", "items": { "type": "string" } },
         "savedPosts": { "type": "array", "items": { "type": "string" } }
       }
+    },
+    "Reel": {
+      "title": "Reel",
+      "description": "A short video reel",
+      "type": "object",
+      "properties": {
+        "userUid": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "cover": { "type": "string" },
+        "caption": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "mentions": { "type": "array", "items": { "type": "string" } },
+        "likes": { "type": "number" },
+        "likedBy": { "type": "array", "items": { "type": "string" } },
+        "comments": { "type": "number" },
+        "allowComments": { "type": "boolean" },
+        "hideLikes": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "audio": { "type": "string" }
+      },
+      "required": ["userUid", "videoUrl", "cover", "createdAt"]
     }
   },
   "firestore": {
+    "reels": {
+      "schema": "Reel",
+      "description": "Short videos collection"
+    },
     "posts": {
       "schema": "Post",
       "description": "User posts collection"

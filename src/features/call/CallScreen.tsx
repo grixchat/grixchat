@@ -10,7 +10,8 @@ import {
   RotateCcw, 
   Volume2, 
   VolumeX,
-  User
+  User,
+  Lock
 } from 'lucide-react';
 import { auth, db } from '../../services/firebase.ts';
 import { 

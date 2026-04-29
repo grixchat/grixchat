@@ -15,6 +15,8 @@ import {
   Camera
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 export const ChatMessageReactions: React.FC<{
   onReact: (emoji: string) => void;
@@ -183,13 +185,15 @@ export const ChatPlusMenu: React.FC<{
   );
 };
 
+
 export const EmojiPickerMenu: React.FC<{
   showEmojiPicker: boolean;
   setShowEmojiPicker: (show: boolean) => void;
   emojiPickerRef: React.RefObject<HTMLDivElement | null>;
   onEmojiSelect: (emoji: string) => void;
 }> = ({ showEmojiPicker, setShowEmojiPicker, emojiPickerRef, onEmojiSelect }) => {
-  const emojis = ['😊', '😂', '🥰', '😍', '😒', '😭', '😘', '☺️', '😩', '😔', '😏', '😁', '💕', '❤️', '🔥', '✨', '👍', '🙏', '💯', '🤣', '🤔', '🙄', '🥺', '😎', '🙌', '👏', '🎉', '🎈', '🎂', '🎁'];
+  const { theme } = useTheme();
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   
   return (
     <div className="relative" ref={emojiPickerRef}>
@@ -201,21 +205,19 @@ export const EmojiPickerMenu: React.FC<{
         <Smile size={24} />
       </button>
       {showEmojiPicker && (
-        <div className="absolute bottom-full right-0 mb-3 w-64 bg-[var(--bg-card)] rounded-xl shadow-2xl border border-[var(--border-color)] p-2 z-[9999] animate-in slide-in-from-bottom-2 duration-200">
-          <div className="px-2 py-1.5 border-b border-[var(--border-color)] mb-2">
-            <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Emojis</p>
-          </div>
-          <div className="grid grid-cols-6 gap-1 max-h-48 overflow-y-auto no-scrollbar">
-            {emojis.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => { onEmojiSelect(emoji); }}
-                className="w-9 h-9 flex items-center justify-center hover:bg-[var(--bg-main)] rounded-lg transition-all active:scale-125 text-xl"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
+        <div className="absolute bottom-full right-0 mb-3 z-[9999] animate-in slide-in-from-bottom-2 duration-200 shadow-2xl rounded-2xl overflow-hidden">
+          <EmojiPicker 
+            onEmojiClick={(emojiData) => {
+              onEmojiSelect(emojiData.emoji);
+            }}
+            theme={isDark ? EmojiTheme.DARK : EmojiTheme.LIGHT}
+            lazyLoadEmojis={true}
+            searchPlaceholder="Search emojis..."
+            width={300}
+            height={400}
+            skinTonesDisabled
+            previewConfig={{ showPreview: false }}
+          />
         </div>
       )}
     </div>

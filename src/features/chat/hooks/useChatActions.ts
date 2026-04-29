@@ -19,6 +19,7 @@ import { db, auth } from '../../../services/firebase.ts';
 import { ImageService } from '../../../services/ImageService.ts';
 import { VideoService } from '../../../services/VideoService.ts';
 import { GofileService } from '../services/GofileService.ts';
+import { AudioService } from '../../../services/AudioService.ts';
 import { toDate } from '../../../utils/dateUtils.ts';
 
 export const useChatActions = (chatId: string, receiverId: string, receiver: any, receiverActiveChatId: string | null) => {
@@ -30,7 +31,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
     onProgress
   }: {
     text: string;
-    file?: File | null;
+    file?: File | Blob | null;
     replyTo?: any;
     onProgress?: (progress: number) => void;
   }) => {
@@ -38,22 +39,22 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
 
     try {
       let fileUrl = '';
-      let fileType: 'text' | 'image' | 'video' | 'file' = 'text';
+      let fileType: 'text' | 'image' | 'video' | 'file' | 'audio' = 'text';
       let fileName = '';
 
       if (file) {
-        fileName = file.name;
+        fileName = (file as File).name || (file.type.startsWith('audio/') ? 'voice_message.webm' : 'file');
         if (file.type.startsWith('image/')) {
-          // Keep ImgBB for images on client if key exists, otherwise server proxy will handle
-          fileUrl = await ImageService.uploadImage(file, onProgress);
+          fileUrl = await ImageService.uploadImage(file as File, onProgress);
           fileType = 'image';
         } else if (file.type.startsWith('video/')) {
-          // Use Cloudinary for video if configured, fallback to Catbox
-          fileUrl = await VideoService.uploadVideo(file, onProgress);
+          fileUrl = await VideoService.uploadVideo(file as File, onProgress);
           fileType = 'video';
+        } else if (file.type.startsWith('audio/')) {
+          fileUrl = await AudioService.uploadAudio(file, onProgress);
+          fileType = 'audio';
         } else {
-          // Use server proxy for other files (Gofile)
-          fileUrl = await GofileService.uploadFile(file);
+          fileUrl = await GofileService.uploadFile(file as File);
           fileType = 'file';
         }
       }
@@ -62,10 +63,10 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
         chatId,
         senderId: auth.currentUser.uid,
         receiverId,
-        text: text || (fileType === 'file' ? `Sent a file: ${fileName}` : fileType === 'video' ? 'Sent a video' : ''),
+        text: text || (fileType === 'file' ? `Sent a file: ${fileName}` : fileType === 'video' ? 'Sent a video' : fileType === 'audio' ? 'Voice message' : ''),
         imageUrl: fileType === 'image' ? (fileUrl || null) : null,
-        fileUrl: (fileType === 'file' || fileType === 'video') ? (fileUrl || null) : null,
-        fileName: (fileType === 'file' || fileType === 'video') ? (fileName || null) : null,
+        fileUrl: (fileType === 'file' || fileType === 'video' || fileType === 'audio') ? (fileUrl || null) : null,
+        fileName: (fileType === 'file' || fileType === 'video' || fileType === 'audio') ? (fileName || null) : null,
         timestamp: serverTimestamp(),
         isRead: false,
         type: fileType,

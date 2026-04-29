@@ -56,5 +56,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
+    
+    // Reels collection
+    match /reels/{reelId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userUid == request.auth.uid;
+      allow update: if isSignedIn(); // For likes/comments
+      allow delete: if isSignedIn() && existing().userUid == request.auth.uid;
+    }
   }
 }

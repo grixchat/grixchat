@@ -12,14 +12,18 @@ import {
   EyeOff,
   Heart,
   Plus,
+  Camera,
   LayoutGrid,
   BarChart2,
   Play,
   Volume2,
   VolumeX,
-  Lock
+  Lock,
+  PlaySquare
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
+import { auth, db } from '../../services/firebase.ts';
 import { useSearch } from '../../contexts/SearchContext.tsx';
 import { useAuth } from '../../providers/AuthProvider.tsx';
 
@@ -30,6 +34,8 @@ export default function TabHeader() {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [hasUnreadLikes, setHasUnreadLikes] = useState(false);
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +46,29 @@ export default function TabHeader() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!auth.currentUser) return;
+
+    // Listen for unread activity (likes/comments)
+    const likesQuery = query(
+      collection(db, "notifications"),
+      where("userId", "==", auth.currentUser.uid),
+      where("read", "==", false),
+      limit(20) // Small limit to keep costs down but enough to differentiate
+    );
+
+    const unsubscribe = onSnapshot(likesQuery, (snapshot) => {
+      const docs = snapshot.docs.map(d => d.data());
+      const hasLikes = docs.some(d => ["like", "comment"].includes(d.type));
+      const hasNotifs = docs.some(d => ["follow", "system"].includes(d.type));
+      
+      setHasUnreadLikes(hasLikes);
+      setHasUnreadNotifs(hasNotifs);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const menuOptions = [
@@ -80,15 +109,45 @@ export default function TabHeader() {
           </button>
         )}
 
-        {/* Friends Filter Icon - Show on Reels */}
+        {/* Reels Specific Icons - START */}
         {isReelsPage && (
           <button 
-            className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group"
-            title="Friends Only"
+            onClick={() => navigate('/reels/grixtube')}
+            className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group relative flex items-center justify-center"
+            title="GrixTube"
           >
-            <Users size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
+            <div className="w-6 h-4 bg-[var(--header-text)] rounded-[3px] flex items-center justify-center group-active:scale-110 transition-transform">
+              <Play size={10} fill="var(--header-bg)" className="text-[var(--header-bg)] ml-0.5" />
+            </div>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--header-bg)] animate-pulse" />
           </button>
         )}
+
+        {/* Create Reel Icon - Show on Reels */}
+        {isReelsPage && (
+          <button 
+            onClick={() => navigate('/camera')}
+            className="p-2 bg-sky-500 rounded-full text-white shadow-lg shadow-sky-500/20 active:scale-95 transition-all"
+            title="Camera"
+          >
+            <Camera size={20} />
+          </button>
+        )}
+
+        {/* Mute Icon - Show on Reels */}
+        {isReelsPage && (
+          <button 
+            onClick={() => setIsMuted(!isMuted)}
+            className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group"
+          >
+            {isMuted ? (
+              <VolumeX size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
+            ) : (
+              <Volume2 size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
+            )}
+          </button>
+        )}
+        {/* Reels Specific Icons - END */}
 
         {/* Search Icon - Show on Chats and Hub */}
         {(isChatsPage || isHubPage) && (
@@ -121,32 +180,23 @@ export default function TabHeader() {
           </button>
         )}
 
-        {/* Reels Specific Icons */}
-        {isReelsPage && (
-          <>
-            <button className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
-              <Play size={22} className="text-[var(--header-text)] fill-current" />
-            </button>
-            <button 
-              onClick={() => setIsMuted(!isMuted)}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-            >
-              {isMuted ? <VolumeX size={22} className="text-[var(--header-text)]" /> : <Volume2 size={22} className="text-[var(--header-text)]" />}
-            </button>
-          </>
-        )}
-
         {/* Heart Icon - Show on Home */}
         {isHomePage && (
-          <Link to="/notifications/likes" className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group">
+          <Link to="/notifications/likes" className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group relative">
             <Heart size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" fill="currentColor" fillOpacity={0.1} />
+            {hasUnreadLikes && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--header-bg)]" />
+            )}
           </Link>
         )}
 
         {/* Bell Icon - Show on Home */}
         {isHomePage && (
-          <Link to="/notifications" className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group">
+          <Link to="/notifications" className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group relative">
             <Bell size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
+            {hasUnreadNotifs && (
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--header-bg)]" />
+            )}
           </Link>
         )}
 
