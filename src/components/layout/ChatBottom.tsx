@@ -157,7 +157,7 @@ export default function ChatBottom({
   const isMicMode = !newMessage.trim() && !selectedFile && !isRecording;
 
   return (
-    <div className="shrink-0 bg-[var(--nav-bg)] px-4 py-1.5 pb-safe z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] relative border-t border-white/10 w-full max-w-full rounded-t-2xl">
+    <div className="shrink-0 bg-[var(--nav-bg)] px-2 sm:px-4 py-1.5 pb-safe z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] relative border-t border-white/10 w-full max-w-full rounded-t-2xl">
       <ChatMessageMenu 
         activeMessageMenu={activeMessageMenu}
         setActiveMessageMenu={setActiveMessageMenu}
@@ -181,9 +181,9 @@ export default function ChatBottom({
         currentUserUid={currentUserUid}
       />
 
-      <div className="flex items-center gap-2.5 w-full max-w-full relative py-1">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 w-full max-w-full relative py-0.5 sm:py-1">
         {!isRecording && (
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             <input 
               type="file" 
               ref={imageInputRef} 
@@ -193,18 +193,18 @@ export default function ChatBottom({
             />
             <button 
               onClick={() => navigate(`/camera?chatId=${chatId}`)}
-              className="w-10 h-10 flex items-center justify-center bg-sky-500 text-white rounded-full shadow-lg shadow-sky-500/20 active:scale-90 transition-all shrink-0"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-sky-500 text-white rounded-full shadow-lg shadow-sky-500/20 active:scale-90 transition-all"
               title="Camera"
             >
-              <CameraIcon size={20} />
+              <CameraIcon size={18} className="sm:size-5" />
             </button>
           </div>
         )}
 
-        <div className={`flex-1 bg-[var(--bg-card)] rounded-[22px] px-3.5 py-1 flex flex-col transition-all border border-[var(--border-color)] ${isRecording ? 'bg-red-50/10 border-red-500/30' : ''}`}>
+        <div className={`flex-1 min-w-0 bg-[var(--bg-card)] rounded-[22px] px-2 sm:px-3.5 py-0.5 flex flex-col transition-all border border-[var(--border-color)] ${isRecording ? 'bg-red-50/10 border-red-500/30' : ''}`}>
           {selectedFile && !isRecording && (
             <div className="mt-1 mb-2 relative w-fit group">
-              <div className="relative rounded-xl overflow-hidden border border-[var(--border-color)] shadow-lg max-w-[150px] bg-black/5 p-1.5">
+              <div className="relative rounded-xl overflow-hidden border border-[var(--border-color)] shadow-lg max-w-[120px] sm:max-w-[150px] bg-black/5 p-1.5">
                 {filePreviewUrl ? (
                   selectedFile?.type.startsWith('video/') ? (
                     <video src={filePreviewUrl} className="w-full h-auto rounded-lg" muted />
@@ -219,12 +219,7 @@ export default function ChatBottom({
                 ) : (
                   <div className="flex flex-col items-center gap-1 py-1 px-1">
                     <Paperclip className="text-[var(--text-secondary)]" size={18} />
-                    <p className="text-[9px] text-[var(--text-secondary)] font-bold truncate w-[80px] text-center">{(selectedFile as File).name}</p>
-                  </div>
-                )}
-                {isUploading && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="text-white text-[10px] font-black">{uploadProgress}%</span>
+                    <p className="text-[9px] text-[var(--text-secondary)] font-bold truncate w-[60px] sm:w-[80px] text-center">{(selectedFile as File).name}</p>
                   </div>
                 )}
                 {!isUploading && !isSending && (
@@ -236,20 +231,25 @@ export default function ChatBottom({
                     <X size={10} />
                   </button>
                 )}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span className="text-white text-[10px] font-black">{uploadProgress}%</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
           
-          <div className="flex items-end w-full gap-2">
+          <div className="flex items-end w-full gap-1 sm:gap-2">
             {isRecording ? (
-              <div className="flex-1 flex items-center justify-between py-2 px-1 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                  <span className="text-[14px] font-black tracking-tight text-red-500">{formatRecTime(recordingTime)}</span>
+              <div className="flex-1 min-w-0 flex items-center justify-between py-2 px-1 animate-pulse">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full animate-ping" />
+                  <span className="text-[12px] sm:text-[14px] font-black tracking-tight text-red-500">{formatRecTime(recordingTime)}</span>
                 </div>
                 <button 
                   onClick={cancelRecording}
-                  className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  className="px-2 sm:px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                 >
                   Cancel
                 </button>
@@ -267,7 +267,7 @@ export default function ChatBottom({
                     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                   }}
                   rows={1}
-                  className="flex-1 bg-transparent text-[15px] font-medium focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/40 py-2.5 resize-none max-h-[120px] leading-tight"
+                  className="flex-1 min-w-0 bg-transparent text-[14px] sm:text-[15px] font-medium focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/40 py-2 sm:py-2.5 resize-none max-h-[120px] leading-tight"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !isMicMode) {
                       e.preventDefault();
@@ -276,7 +276,7 @@ export default function ChatBottom({
                   }}
                 />
                 
-                <div className="flex items-center gap-1 pb-1.5">
+                <div className="flex items-center gap-0.5 sm:gap-1 pb-1 sm:pb-1.5 shrink-0">
                   <EmojiPickerMenu 
                     showEmojiPicker={showEmojiPicker}
                     setShowEmojiPicker={setShowEmojiPicker}
@@ -295,10 +295,10 @@ export default function ChatBottom({
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 text-[var(--text-secondary)] opacity-60 hover:opacity-100 transition-opacity"
+                    className="p-1.5 sm:p-2 text-[var(--text-secondary)] opacity-60 hover:opacity-100 transition-opacity"
                     title="Attach File"
                   >
-                    <Paperclip size={20} />
+                    <Paperclip size={18} className="sm:size-5" />
                   </button>
                 </div>
               </>
@@ -318,18 +318,18 @@ export default function ChatBottom({
             }
           }}
           disabled={((!newMessage.trim() && !selectedFile) && !isMicMode && !isRecording) || isSending || isUploading}
-          className={`shrink-0 w-11 h-11 flex items-center justify-center rounded-full text-white transition-all shadow-lg active:scale-90 hover:brightness-110 ${
+          className={`shrink-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full text-white transition-all shadow-lg active:scale-90 hover:brightness-110 ${
             isRecording ? 'bg-red-500 ring-4 ring-red-500/20' : 'bg-sky-500 shadow-sky-500/20'
           }`}
         >
           {isSending ? (
-            <Loader2 size={20} className="animate-spin" />
+            <Loader2 size={18} className="sm:size-5 animate-spin" />
           ) : isRecording ? (
-            <StopCircle size={22} />
+            <StopCircle size={20} className="sm:size-5.5" />
           ) : isMicMode ? (
-            <Mic size={22} />
+            <Mic size={20} className="sm:size-5.5" />
           ) : (
-            <Send size={20} className="ml-0.5" />
+            <Send size={18} className="sm:size-5 ml-0.5" />
           )}
         </button>
       </div>
