@@ -27,7 +27,8 @@ import {
   ChatReplyPreview,
   ChatEditPreview,
   ChatPlusMenu,
-  EmojiPickerMenu
+  EmojiPickerMenu,
+  VoiceMessage
 } from '../../components/ChatUIComponents';
 import { auth, db, rtdb } from '../../services/firebase.ts';
 import { ref as rtdbRef, onValue, update } from 'firebase/database';
@@ -518,20 +519,11 @@ export default function ChatScreen() {
                           </div>
                         )}
                         {msg.type === 'audio' && msg.fileUrl && (
-                          <div className="mb-1 py-2 px-3 rounded-2xl bg-black/5 border border-black/10 flex items-center gap-3 min-w-[200px]">
-                            <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center text-white shadow-lg overflow-hidden shrink-0">
-                                <Mic size={20} />
-                            </div>
-                            <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                              <audio 
-                                src={msg.fileUrl} 
-                                controls 
-                                className="h-8 w-full scale-[0.8] origin-left -ml-2"
-                              />
-                              <div className="flex justify-between items-center px-1">
-                                <span className="text-[9px] font-black uppercase text-[var(--primary)]">Voice Message</span>
-                              </div>
-                            </div>
+                          <div className="mb-1 w-full flex justify-center">
+                            <VoiceMessage 
+                              fileUrl={msg.fileUrl}
+                              isMe={isMe}
+                            />
                           </div>
                         )}
                         {msg.fileUrl && msg.type !== 'video' && msg.type !== 'audio' && (

@@ -96,7 +96,15 @@ export default function ChatBottom({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      const mimeType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/mp4'
+      ].find(type => MediaRecorder.isTypeSupported(type));
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -107,13 +115,18 @@ export default function ChatBottom({
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setSelectedFile(audioBlob);
-        setFilePreviewUrl(URL.createObjectURL(audioBlob));
+        const type = mimeType || 'audio/webm';
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type });
+          setSelectedFile(audioBlob);
+          setFilePreviewUrl(URL.createObjectURL(audioBlob));
+        }
         stream.getTracks().forEach(track => track.stop());
+        audioChunksRef.current = [];
+        mediaRecorderRef.current = null;
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(200); // 200ms timeslice for better reliability
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => {
@@ -123,7 +136,7 @@ export default function ChatBottom({
       if (window.navigator.vibrate) window.navigator.vibrate(50);
     } catch (err) {
       console.error("Error accessing microphone:", err);
-      alert("Microphone access denied or not supported.");
+      alert("Microphone access denied or not available. Please check your browser permissions.");
     }
   };
 
@@ -137,14 +150,18 @@ export default function ChatBottom({
 
   const cancelRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      // Clear the onstop handler first so we don't save the cancelled message
+      mediaRecorderRef.current.onstop = null;
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       if (timerRef.current) clearInterval(timerRef.current);
-      // We'll filter the stop event to not set a file
-      mediaRecorderRef.current.onstop = () => {
-        audioChunksRef.current = [];
-        mediaRecorderRef.current = null;
-      };
+      
+      // Stop tracks manually
+      const stream = mediaRecorderRef.current.stream;
+      stream.getTracks().forEach(track => track.stop());
+      
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = null;
     }
   };
 
@@ -157,7 +174,7 @@ export default function ChatBottom({
   const isMicMode = !newMessage.trim() && !selectedFile && !isRecording;
 
   return (
-    <div className="shrink-0 bg-[var(--nav-bg)] px-2 sm:px-4 py-1.5 pb-safe z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] relative border-t border-white/10 w-full max-w-full rounded-t-2xl">
+    <div className="shrink-0 bg-transparent px-2 pb-safe z-50 relative w-full max-w-full">
       <ChatMessageMenu 
         activeMessageMenu={activeMessageMenu}
         setActiveMessageMenu={setActiveMessageMenu}
@@ -181,45 +198,26 @@ export default function ChatBottom({
         currentUserUid={currentUserUid}
       />
 
-      <div className="flex items-center gap-1.5 sm:gap-2.5 w-full max-w-full relative py-0.5 sm:py-1">
-        {!isRecording && (
-          <div className="flex items-center shrink-0">
-            <input 
-              type="file" 
-              ref={imageInputRef} 
-              className="hidden" 
-              accept="image/*,video/*" 
-              onChange={handleFileChange}
-            />
-            <button 
-              onClick={() => navigate(`/camera?chatId=${chatId}`)}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-sky-500 text-white rounded-full shadow-lg shadow-sky-500/20 active:scale-90 transition-all"
-              title="Camera"
-            >
-              <CameraIcon size={18} className="sm:size-5" />
-            </button>
-          </div>
-        )}
-
-        <div className={`flex-1 min-w-0 bg-[var(--bg-card)] rounded-[22px] px-2 sm:px-3.5 py-0.5 flex flex-col transition-all border border-[var(--border-color)] ${isRecording ? 'bg-red-50/10 border-red-500/30' : ''}`}>
+      <div className="flex items-end gap-2 w-full max-w-full relative pb-2 pt-1">
+        <div className={`flex-1 min-w-0 bg-[#2b3943] rounded-[24px] px-1 sm:px-2 flex flex-col transition-all shadow-sm ${isRecording ? 'animate-pulse' : ''}`}>
           {selectedFile && !isRecording && (
-            <div className="mt-1 mb-2 relative w-fit group">
-              <div className="relative rounded-xl overflow-hidden border border-[var(--border-color)] shadow-lg max-w-[120px] sm:max-w-[150px] bg-black/5 p-1.5">
+            <div className="mt-2 mb-1 px-2 relative w-fit group">
+              <div className="relative rounded-xl overflow-hidden border border-white/10 shadow-md max-w-[120px] sm:max-w-[150px] bg-black/20 p-1.5">
                 {filePreviewUrl ? (
                   selectedFile?.type.startsWith('video/') ? (
                     <video src={filePreviewUrl} className="w-full h-auto rounded-lg" muted />
                   ) : selectedFile?.type.startsWith('audio/') ? (
                     <div className="flex items-center gap-2 px-2 py-1">
-                      <Mic size={14} className="text-sky-500" />
-                      <span className="text-[10px] font-black text-[var(--text-primary)]">Voice Message</span>
+                      <Mic size={14} className="text-[#00a884]" />
+                      <span className="text-[10px] font-black text-white/90">Voice message</span>
                     </div>
                   ) : (
                     <img src={filePreviewUrl} alt="Preview" className="w-full h-auto rounded-lg" />
                   )
                 ) : (
                   <div className="flex flex-col items-center gap-1 py-1 px-1">
-                    <Paperclip className="text-[var(--text-secondary)]" size={18} />
-                    <p className="text-[9px] text-[var(--text-secondary)] font-bold truncate w-[60px] sm:w-[80px] text-center">{(selectedFile as File).name}</p>
+                    <Paperclip className="text-white/60" size={18} />
+                    <p className="text-[9px] text-white/60 font-bold truncate w-[60px] sm:w-[80px] text-center">{(selectedFile as File).name}</p>
                   </div>
                 )}
                 {!isUploading && !isSending && (
@@ -240,43 +238,23 @@ export default function ChatBottom({
             </div>
           )}
           
-          <div className="flex items-end w-full gap-1 sm:gap-2">
+          <div className="flex items-end w-full min-h-[48px] pb-0.5">
             {isRecording ? (
-              <div className="flex-1 min-w-0 flex items-center justify-between py-2 px-1 animate-pulse">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-red-500 rounded-full animate-ping" />
-                  <span className="text-[12px] sm:text-[14px] font-black tracking-tight text-red-500">{formatRecTime(recordingTime)}</span>
+              <div className="flex-1 min-w-0 flex items-center justify-between py-2.5 px-3 self-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                  <span className="text-[15px] font-medium text-white/90">{formatRecTime(recordingTime)}</span>
                 </div>
                 <button 
                   onClick={cancelRecording}
-                  className="px-2 sm:px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  className="px-3 py-1 text-white/60 text-[12px] active:scale-95 transition-all"
                 >
-                  Cancel
+                  Swipe to cancel
                 </button>
               </div>
             ) : (
               <>
-                <textarea 
-                  ref={textareaRef}
-                  placeholder="Message..."
-                  value={newMessage}
-                  onChange={(e) => {
-                    setNewMessage(e.target.value);
-                    handleTyping();
-                    e.target.style.height = 'auto';
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                  }}
-                  rows={1}
-                  className="flex-1 min-w-0 bg-transparent text-[14px] sm:text-[15px] font-medium focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/40 py-2 sm:py-2.5 resize-none max-h-[120px] leading-tight"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && !isMicMode) {
-                      e.preventDefault();
-                      handleSendMessage(e as any);
-                    }
-                  }}
-                />
-                
-                <div className="flex items-center gap-0.5 sm:gap-1 pb-1 sm:pb-1.5 shrink-0">
+                <div className="flex items-center shrink-0 mb-1">
                   <EmojiPickerMenu 
                     showEmojiPicker={showEmojiPicker}
                     setShowEmojiPicker={setShowEmojiPicker}
@@ -287,6 +265,29 @@ export default function ChatBottom({
                       textareaRef.current?.focus();
                     }}
                   />
+                </div>
+
+                <textarea 
+                  ref={textareaRef}
+                  placeholder="Message"
+                  value={newMessage}
+                  onChange={(e) => {
+                    setNewMessage(e.target.value);
+                    handleTyping();
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                  }}
+                  rows={1}
+                  className="flex-1 bg-transparent text-[17px] focus:outline-none text-white placeholder:text-white/40 py-2.5 px-2 resize-none max-h-[120px] leading-tight"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && !isMicMode) {
+                      e.preventDefault();
+                      handleSendMessage(e as any);
+                    }
+                  }}
+                />
+
+                <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 pr-1 mb-1">
                   <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -295,11 +296,23 @@ export default function ChatBottom({
                   />
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-1.5 sm:p-2 text-[var(--text-secondary)] opacity-60 hover:opacity-100 transition-opacity"
-                    title="Attach File"
+                    className="p-2 text-white/60 hover:text-white transition-colors"
+                    title="Attach"
                   >
-                    <Paperclip size={18} className="sm:size-5" />
+                    <Paperclip size={22} className="-rotate-45" />
                   </button>
+                  
+                  {!newMessage.trim() && !selectedFile && (
+                    <>
+                      <button 
+                        onClick={() => navigate(`/camera?chatId=${chatId}`)}
+                        className="p-2 text-white/60 hover:text-white transition-colors"
+                        title="Camera"
+                      >
+                        <CameraIcon size={22} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -318,21 +331,22 @@ export default function ChatBottom({
             }
           }}
           disabled={((!newMessage.trim() && !selectedFile) && !isMicMode && !isRecording) || isSending || isUploading}
-          className={`shrink-0 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full text-white transition-all shadow-lg active:scale-90 hover:brightness-110 ${
-            isRecording ? 'bg-red-500 ring-4 ring-red-500/20' : 'bg-sky-500 shadow-sky-500/20'
+          className={`shrink-0 w-[48px] h-[48px] flex items-center justify-center rounded-full text-white transition-all shadow-md active:scale-95 ${
+            isRecording ? 'bg-red-500' : 'bg-sky-500'
           }`}
         >
           {isSending ? (
-            <Loader2 size={18} className="sm:size-5 animate-spin" />
+            <Loader2 size={24} className="animate-spin" />
           ) : isRecording ? (
-            <StopCircle size={20} className="sm:size-5.5" />
+            <StopCircle size={24} />
           ) : isMicMode ? (
-            <Mic size={20} className="sm:size-5.5" />
+            <Mic size={24} />
           ) : (
-            <Send size={18} className="sm:size-5 ml-0.5" />
+            <Send size={24} className="ml-1" />
           )}
         </button>
       </div>
     </div>
   );
 }
+
