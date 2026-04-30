@@ -120,6 +120,16 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
                            receiverActiveChatId !== myId; // receiverActiveChatId is the ID of the user the receiver is CURRENTLY chatting with
 
       if (shouldNotify) {
+        const notificationData: any = {
+          chatId,
+          senderId: myId,
+          click_action: `/chat/${myId}`
+        };
+
+        if (fileType === 'image' && fileUrl) {
+          notificationData.imageUrl = fileUrl;
+        }
+
         fetch('/api/send-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -127,12 +137,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
             tokens: receiver.fcmTokens,
             title: `${auth.currentUser?.displayName || 'GrixChat User'}`,
             body: text || (fileType === 'image' ? 'Sent an image' : fileType === 'video' ? 'Sent a video' : 'Sent a file'),
-            data: { 
-              chatId, 
-              senderId: myId,
-              imageUrl: fileType === 'image' ? fileUrl : null,
-              click_action: `/chat/${myId}`
-            }
+            data: notificationData
           })
         }).catch(err => console.error('Notification error:', err));
       }

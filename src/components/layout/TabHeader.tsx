@@ -77,6 +77,7 @@ export default function TabHeader() {
     { label: 'Linked devices', icon: Laptop },
     { label: 'Starred messages', icon: Star },
     { label: 'Archived', icon: Archive, path: '/chats/archived' },
+    { label: 'GrixHub', icon: LayoutGrid, path: '/hub' },
     ...(userData?.hiddenChatSettings?.showMenuEntry !== false ? [
       { label: 'Hidden chats', icon: EyeOff, path: '/chats/hidden' }
     ] : []),
@@ -87,6 +88,7 @@ export default function TabHeader() {
   const isChatsPage = location.pathname === '/chats';
   const isHubPage = location.pathname === '/hub';
   const isReelsPage = location.pathname === '/reels';
+  const isTubePage = location.pathname === '/reels/grixtube';
   const isProfilePage = location.pathname === '/profile';
 
   return (
@@ -109,60 +111,26 @@ export default function TabHeader() {
           </button>
         )}
 
-        {/* Reels Specific Icons - START */}
-        {isReelsPage && (
-          <button 
-            onClick={() => navigate('/reels/grixtube')}
-            className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group relative flex items-center justify-center"
-            title="GrixTube"
-          >
-            <div className="w-6 h-4 bg-[var(--header-text)] rounded-[3px] flex items-center justify-center group-active:scale-110 transition-transform">
-              <Play size={10} fill="var(--header-bg)" className="text-[var(--header-bg)] ml-0.5" />
-            </div>
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--header-bg)] animate-pulse" />
-          </button>
-        )}
+
 
         {/* Create Reel Icon - Show on Reels */}
         {isReelsPage && (
           <button 
-            onClick={() => navigate('/camera')}
-            className="p-2 bg-sky-500 rounded-full text-white shadow-lg shadow-sky-500/20 active:scale-95 transition-all"
-            title="Camera"
-          >
-            <Camera size={20} />
-          </button>
-        )}
-
-        {/* Mute Icon - Show on Reels */}
-        {isReelsPage && (
-          <button 
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={() => navigate('/reels/create')}
             className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group"
+            title="Create Reel"
           >
-            {isMuted ? (
-              <VolumeX size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
-            ) : (
-              <Volume2 size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
-            )}
+            <Plus size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
           </button>
         )}
-        {/* Reels Specific Icons - END */}
 
-        {/* Search Icon - Show on Chats and Hub */}
-        {(isChatsPage || isHubPage) && (
+        {/* Search Icon - Show on Chats, Hub, and Tube */}
+        {(isChatsPage || isHubPage || isTubePage) && (
           <button 
             onClick={() => setIsSearchOpen(true)}
             className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group"
           >
             <Search size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
-          </button>
-        )}
-
-        {/* Hub Icon - Show on Hub */}
-        {isHubPage && (
-          <button className="p-2 hover:bg-black/5 rounded-full transition-colors cursor-pointer group">
-            <LayoutGrid size={22} className="text-[var(--header-text)] group-active:scale-110 transition-transform" />
           </button>
         )}
 

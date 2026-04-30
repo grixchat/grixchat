@@ -66,24 +66,6 @@ export default function GrixTubeScreen() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)]">
-      {/* GrixTube Header */}
-      <div className="shrink-0 flex items-center justify-between px-4 h-14 bg-[var(--header-bg)] border-b border-[var(--border-color)]">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-1 hover:bg-black/5 rounded-full">
-            <ChevronLeft size={24} className="text-[var(--header-text)]" />
-          </button>
-          <div className="flex items-center gap-1">
-            <Play size={20} fill="#FF0000" className="text-red-600" />
-            <span className="text-lg font-black tracking-tighter text-[var(--header-text)]">GrixTube</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="p-1 text-[var(--header-text)]"><Search size={22} /></button>
-          <button className="p-1 text-[var(--header-text)]"><Bell size={22} /></button>
-          <button className="p-1 text-[var(--header-text)]"><UserCircle size={22} /></button>
-        </div>
-      </div>
-
       {/* Categories Bar */}
       <div className="shrink-0 flex gap-3 overflow-x-auto px-4 py-3 no-scrollbar border-b border-[var(--border-color)] bg-[var(--header-bg)]">
         {CATEGORIES.map(cat => (

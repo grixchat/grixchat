@@ -80,7 +80,7 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
         content: f.content
       }));
 
-      await githubApi.pushFilesBatch(
+      const result = await githubApi.pushFilesBatch(
         token,
         repo.owner.login,
         repo.name,
@@ -89,20 +89,28 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
       );
 
       // Mark all as success
-      updatedFiles.forEach(f => f.status = 'success');
+      updatedFiles.forEach(f => {
+        f.status = 'success';
+        f.error = undefined;
+      });
       setPushProgress(100);
+      setSyncResult({ success: true, message: `Successfully synced ${files.length} files!` });
     } catch (error: any) {
       console.error(`Batch push failed:`, error);
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error";
       // Mark all as error
       updatedFiles.forEach(f => {
         f.status = 'error';
-        f.error = error.response?.data?.message || error.message;
+        f.error = errorMessage;
       });
+      setSyncResult({ success: false, message: `Failed: ${errorMessage}` });
     } finally {
       setFiles([...updatedFiles]);
       setIsPushing(false);
     }
   };
+
+  const [syncResult, setSyncResult] = useState<{ success: boolean, message: string } | null>(null);
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)]">
@@ -188,6 +196,22 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
                       animate={{ width: `${pushProgress}%` }}
                     />
                   </div>
+                </div>
+              ) : syncResult ? (
+                <div className="flex flex-col gap-3">
+                  <div className={`p-3 rounded-xl flex items-center gap-2 border ${syncResult.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-rose-500/10 border-rose-500/20 text-rose-600'}`}>
+                    {syncResult.success ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                    <span className="text-xs font-bold">{syncResult.message}</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setFiles([]);
+                      setSyncResult(null);
+                    }}
+                    className="w-full bg-[var(--bg-main)] text-[var(--text-primary)] font-bold py-3 rounded-xl border border-[var(--border-color)]"
+                  >
+                    Done
+                  </button>
                 </div>
               ) : (
                 <button 

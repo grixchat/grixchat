@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MessageCircle, Compass, LayoutGrid, UserCircle, Clapperboard, Home } from 'lucide-react';
+import { MessageCircle, Compass, LayoutGrid, UserCircle, Clapperboard, Home, PlaySquare } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { auth, db } from '../../services/firebase.ts';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -29,7 +29,7 @@ export default function TabBottom() {
     { icon: Home, path: '/', label: 'Home', activeColor: 'text-blue-500' },
     { icon: Clapperboard, path: '/reels', label: 'Reels', activeColor: 'text-blue-500' },
     { icon: MessageCircle, path: '/chats', label: 'Chats', badge: unreadCount, activeColor: 'text-blue-500' },
-    { icon: LayoutGrid, path: '/hub', label: 'Hub', activeColor: 'text-blue-500' },
+    { icon: PlaySquare, path: '/reels/grixtube', label: 'Tube', activeColor: 'text-blue-500' },
     { icon: UserCircle, path: '/profile', label: 'Profile', activeColor: 'text-blue-500' },
   ];
 

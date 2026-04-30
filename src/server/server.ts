@@ -156,12 +156,32 @@ app.post("/api/send-notification", async (req, res) => {
       tokens,
       notification: { title, body },
       data: data || {},
-      webpush: {
+      android: {
+        priority: 'high',
         notification: {
+          icon: 'stock_ticker_update',
+          color: '#7e22ce',
+          sound: 'default'
+        }
+      },
+      webpush: {
+        headers: {
+          Urgency: 'high'
+        },
+        notification: {
+          title,
+          body,
           icon: '/assets/favicon.png',
           badge: '/assets/favicon.png',
           vibrate: [200, 100, 200],
-          requireInteraction: true
+          requireInteraction: true,
+          data: {
+            ...data,
+            url: data?.click_action || '/chats'
+          }
+        },
+        fcmOptions: {
+          link: data?.click_action || '/chats'
         }
       }
     });
@@ -382,20 +402,25 @@ app.post("/api/github/push-batch", async (req, res) => {
     const baseTreeSha = branchRes.data.commit.commit.tree.sha;
 
     // 2. Create blobs for each file
-    const blobPromises = files.map(async (file: any) => {
-      const blobRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
-        content: file.content,
-        encoding: 'base64'
-      }, { headers });
-      return {
-        path: file.path,
-        mode: '100644',
-        type: 'blob',
-        sha: blobRes.data.sha
-      };
-    });
-
-    const treeItems = await Promise.all(blobPromises);
+    const treeItems = [];
+    for (const file of files) {
+      try {
+        const blobRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+          content: file.content,
+          encoding: 'base64'
+        }, { headers });
+        
+        treeItems.push({
+          path: file.path,
+          mode: '100644',
+          type: 'blob',
+          sha: blobRes.data.sha
+        });
+      } catch (err: any) {
+        console.error(`Failed to create blob for ${file.path}:`, err.response?.data || err.message);
+        throw new Error(`Failed to upload ${file.path}: ${err.response?.data?.message || err.message}`);
+      }
+    }
 
     // 3. Create a new tree
     const treeRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
