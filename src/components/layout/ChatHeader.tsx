@@ -11,7 +11,8 @@ import {
   VolumeX, 
   Trash, 
   UserX, 
-  AlertTriangle
+  AlertTriangle,
+  Play
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,6 +27,7 @@ interface ChatHeaderProps {
   deleteChat: () => void;
   hideChat?: () => void;
   archiveChat?: () => void;
+  onWatchTogether?: () => void;
   optionsRef: React.RefObject<HTMLDivElement | null>;
   isTyping?: boolean;
   receiverStatus?: 'online' | 'offline';
@@ -44,6 +46,7 @@ export default function ChatHeader({
   deleteChat,
   hideChat,
   archiveChat,
+  onWatchTogether,
   optionsRef,
   isTyping,
   receiverStatus,
@@ -139,6 +142,15 @@ export default function ChatHeader({
                 <>
                   <button onClick={archiveChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
                     <Archive size={18} className="text-[var(--text-secondary)]" /> Archive Chat
+                  </button>
+                  <button 
+                    onClick={() => {
+                      onWatchTogether?.();
+                      setShowOptions(false);
+                    }} 
+                    className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors text-blue-500"
+                  >
+                    <Play size={18} className="text-blue-500" /> Watch Together
                   </button>
                   <button onClick={hideChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
                     <EyeOff size={18} className="text-[var(--text-secondary)]" /> Hide Chat

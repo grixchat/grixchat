@@ -18,6 +18,7 @@ import {
   Mic
 } from 'lucide-react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import WatchTogether from './components/WatchTogether.tsx';
 import { useTheme } from '../../contexts/ThemeContext';
 import ChatHeader from '../../components/layout/ChatHeader.tsx';
 import ChatBottom from '../../components/layout/ChatBottom.tsx';
@@ -37,7 +38,8 @@ import {
   doc, 
   onSnapshot,
   updateDoc,
-  arrayUnion 
+  arrayUnion,
+  serverTimestamp
 } from 'firebase/firestore';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -64,7 +66,7 @@ export default function ChatScreen() {
   const [lastTap, setLastTap] = useState<{id: string, time: number}>({id: '', time: 0});
   const [receiverStatus, setReceiverStatus] = useState<'online' | 'offline'>('offline');
   const [isSending, setIsSending] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -72,6 +74,8 @@ export default function ChatScreen() {
   const [receiverActiveChatId, setReceiverActiveChatId] = useState<string | null>(null);
   const [receiverLastSeen, setReceiverLastSeen] = useState<any>(null);
   const [chatSettings, setChatSettings] = useState<any>(null);
+  const [watchData, setWatchData] = useState<any>(null);
+  const [isWatchMode, setIsWatchMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -196,6 +200,54 @@ export default function ChatScreen() {
       }
     };
   }, [receiverId, chatId, navigate]);
+
+  // Watch Together Sync Effect
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "conversations", chatId), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setWatchData(data);
+        if (data.watchState?.isWatchActive !== undefined) {
+          setIsWatchMode(data.watchState.isWatchActive);
+        }
+      }
+    }, (err) => console.error("Sync error:", err));
+    return () => unsub();
+  }, [chatId]);
+
+  const updateWatchState = async (updates: any) => {
+    if (!auth.currentUser) return;
+    try {
+      const chatRef = doc(db, "conversations", chatId);
+      const newState: any = {
+        "watchState.updatedBy": auth.currentUser.uid,
+        "watchState.timestamp": serverTimestamp()
+      };
+      
+      if (updates.isPlaying !== undefined) newState["watchState.isPlaying"] = updates.isPlaying;
+      if (updates.currentTime !== undefined) newState["watchState.currentTime"] = updates.currentTime;
+      
+      await updateDoc(chatRef, newState);
+    } catch (err) {
+      console.error("Error updating watch state:", err);
+    }
+  };
+
+  const toggleWatchMode = async () => {
+    const newMode = !isWatchMode;
+    setIsWatchMode(newMode);
+    try {
+      await updateDoc(doc(db, "conversations", chatId), {
+        "watchState.isWatchActive": newMode,
+        "watchState.updatedBy": auth.currentUser?.uid,
+        "watchState.timestamp": serverTimestamp(),
+        "watchState.isPlaying": true,
+        "watchState.currentTime": 0
+      });
+    } catch (err) {
+      console.error("Error toggling watch mode:", err);
+    }
+  };
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -365,7 +417,21 @@ export default function ChatScreen() {
         receiverStatus={receiverStatus}
         receiverActiveChatId={receiverActiveChatId}
         currentUserId={auth.currentUser?.uid}
+        onWatchTogether={toggleWatchMode}
       />
+
+      <AnimatePresence>
+        {isWatchMode && watchData?.watchTogetherUrl && (
+          <WatchTogether 
+            url={watchData.watchTogetherUrl}
+            chatId={chatId}
+            currentUserId={auth.currentUser?.uid || ''}
+            watchState={watchData.watchState}
+            updateWatchState={updateWatchState}
+            onClose={toggleWatchMode}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Messages */}
       <div 
@@ -675,7 +741,7 @@ export default function ChatScreen() {
         filePreviewUrl={filePreviewUrl}
         isUploading={isUploading}
         uploadProgress={uploadProgress}
-        setSelectedFile={setSelectedFile}
+        setSelectedFile={(file: any) => setSelectedFile(file)}
         setFilePreviewUrl={setFilePreviewUrl}
         textareaRef={textareaRef}
         handleTyping={handleTyping}

@@ -11,7 +11,7 @@ import { useAuth } from './providers/AuthProvider';
 import { ErrorBoundary } from 'react-error-boundary';
 import SplashScreen from './components/SplashScreen';
 
-function ErrorFallback({ error }: { error: Error }) {
+function ErrorFallback({ error }: { error: any }) {
   return (
     <div className="h-[100dvh] flex flex-col items-center justify-center bg-[var(--bg-main)] p-6 text-center">
       <div className="w-16 h-16 bg-red-100/10 text-red-600 rounded-full flex items-center justify-center mb-4">
