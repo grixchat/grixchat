@@ -208,7 +208,22 @@ export default function App() {
     }
     const handlePopState = () => {};
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    
+    // Disable Context Menu Globally
+    const handleContextMenu = (e: MouseEvent) => {
+      // Allow context menu on input and textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('contextmenu', handleContextMenu);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('contextmenu', handleContextMenu);
+    };
   }, []);
 
   const loading = !isAuthReady || authLoading || splashLoading;

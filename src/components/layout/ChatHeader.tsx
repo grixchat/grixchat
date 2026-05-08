@@ -1,12 +1,14 @@
 import React from 'react';
 import { 
   Archive,
+  ArchiveRestore,
   ArrowLeft, 
   MoreVertical, 
   Phone, 
   Video, 
   User, 
   EyeOff, 
+  Eye,
   Volume2, 
   VolumeX, 
   Trash, 
@@ -27,6 +29,8 @@ interface ChatHeaderProps {
   deleteChat: () => void;
   hideChat?: () => void;
   archiveChat?: () => void;
+  isHidden?: boolean;
+  isArchived?: boolean;
   onWatchTogether?: () => void;
   optionsRef: React.RefObject<HTMLDivElement | null>;
   isTyping?: boolean;
@@ -46,6 +50,8 @@ export default function ChatHeader({
   deleteChat,
   hideChat,
   archiveChat,
+  isHidden,
+  isArchived,
   onWatchTogether,
   optionsRef,
   isTyping,
@@ -141,7 +147,15 @@ export default function ChatHeader({
               {receiverId !== 'gx-ai' && (
                 <>
                   <button onClick={archiveChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
-                    <Archive size={18} className="text-[var(--text-secondary)]" /> Archive Chat
+                    {isArchived ? (
+                      <>
+                        <ArchiveRestore size={18} className="text-[var(--text-secondary)]" /> Unarchive Chat
+                      </>
+                    ) : (
+                      <>
+                        <Archive size={18} className="text-[var(--text-secondary)]" /> Archive Chat
+                      </>
+                    )}
                   </button>
                   <button 
                     onClick={() => {
@@ -153,7 +167,15 @@ export default function ChatHeader({
                     <Play size={18} className="text-blue-500" /> Watch Together
                   </button>
                   <button onClick={hideChat} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
-                    <EyeOff size={18} className="text-[var(--text-secondary)]" /> Hide Chat
+                    {isHidden ? (
+                      <>
+                        <Eye size={18} className="text-[var(--text-secondary)]" /> Unhide Chat
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff size={18} className="text-[var(--text-secondary)]" /> Hide Chat
+                      </>
+                    )}
                   </button>
                   <button onClick={() => setIsMuted(!isMuted)} className="w-full px-4 py-3 text-left text-[14px] font-bold text-[var(--text-primary)] hover:bg-[var(--bg-main)] flex items-center gap-3 transition-colors">
                     {isMuted ? <Volume2 size={18} className="text-[var(--text-secondary)]" /> : <VolumeX size={18} className="text-[var(--text-secondary)]" />}

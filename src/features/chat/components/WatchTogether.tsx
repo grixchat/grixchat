@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactPlayer from 'react-player';
-import { X, Maximize2, RotateCcw, Play, Pause } from 'lucide-react';
+import { X, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface WatchTogetherProps {
@@ -12,8 +12,6 @@ interface WatchTogetherProps {
   onClose: () => void;
 }
 
-const Player = ReactPlayer as any;
-
 export default function WatchTogether({ 
   url, 
   chatId, 
@@ -22,36 +20,67 @@ export default function WatchTogether({
   updateWatchState, 
   onClose 
 }: WatchTogetherProps) {
-  const extractYoutubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = (url || '').match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  };
+  const playerRef = useRef<any>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [localPlaying, setLocalPlaying] = useState(true);
+  const lastSyncTimeRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
+  const isSeekingRef = useRef<boolean>(false);
 
-  const [iframeKey, setIframeKey] = useState(0);
-
-  // Sync with incoming Firestore state (Primitive for iframe)
+  // Sync with incoming Firestore state
   useEffect(() => {
-    if (!watchState || !watchState.currentTime) return;
+    if (!watchState || !isReady || !playerRef.current) return;
     
-    // If the server time is significantly different from what we might expect, or manually synced
-    // Since we can't easily get iframe time, we'll just allow manual sync or initial sync
-  }, [watchState?.currentTime]);
+    // Only sync if I am NOT the one who updated the state last
+    if (watchState.updatedBy !== currentUserId) {
+      const myTime = playerRef.current.getCurrentTime();
+      const serverTime = watchState.currentTime || 0;
+      
+      // If skew is more than 3 seconds, force seek
+      if (Math.abs(myTime - serverTime) > 3) {
+        console.log("Syncing to server time:", serverTime);
+        playerRef.current.seekTo(serverTime, 'seconds');
+      }
 
-  const youtubeId = extractYoutubeId(url);
+      if (watchState.isPlaying !== undefined && watchState.isPlaying !== localPlaying) {
+        setLocalPlaying(watchState.isPlaying);
+      }
+    }
+  }, [watchState?.currentTime, watchState?.isPlaying, isReady, currentUserId]);
+
+  const handleProgress = (state: any) => {
+    const currentTime = state.playedSeconds;
+    
+    // Detect manual seek if the jump is significant and we are the owner of the session
+    // Or just update our state if we move.
+    if (watchState?.updatedBy === currentUserId) {
+      // Check for seek (jump > 2 seconds)
+      if (Math.abs(currentTime - lastTimeRef.current) > 2 && !isSeekingRef.current) {
+        console.log("Seek detected via progress:", currentTime);
+        updateWatchState({ 
+          currentTime: currentTime,
+          isPlaying: localPlaying
+        });
+      }
+
+      // Periodic sync (every 5 seconds)
+      const now = Date.now();
+      if (now - lastSyncTimeRef.current > 5000) {
+        updateWatchState({ currentTime: currentTime });
+        lastSyncTimeRef.current = now;
+      }
+    }
+    
+    lastTimeRef.current = currentTime;
+  };
 
   const syncNow = () => {
-    // Incrementing key forces iframe reload with new start time
-    setIframeKey(prev => prev + 1);
+    if (watchState?.currentTime !== undefined && playerRef.current) {
+      playerRef.current.seekTo(watchState.currentTime, 'seconds');
+    }
   };
 
-  if (!youtubeId) {
-    return (
-      <div className="w-full aspect-video bg-zinc-900 flex items-center justify-center text-white/50 text-xs">
-        Invalid YouTube URL
-      </div>
-    );
-  }
+  const Player = ReactPlayer as any;
 
   return (
     <motion.div 
@@ -61,16 +90,34 @@ export default function WatchTogether({
       className="w-full bg-black relative z-[45] shadow-inner overflow-hidden flex flex-col"
     >
       <div className="aspect-video w-full max-h-[35dvh] bg-zinc-900 flex items-center justify-center relative group">
-        <iframe 
-          key={iframeKey}
-          width="100%" 
-          height="100%" 
-          src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(watchState?.currentTime || 0)}&rel=0&modestbranding=1`}
-          title="Watch Together"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          className="w-full h-full"
+        <Player
+          ref={playerRef}
+          url={url}
+          width="100%"
+          height="100%"
+          playing={localPlaying}
+          controls={true}
+          onReady={() => setIsReady(true)}
+          onProgress={handleProgress}
+          onPlay={() => {
+            setLocalPlaying(true);
+            updateWatchState({ isPlaying: true });
+          }}
+          onPause={() => {
+            setLocalPlaying(false);
+            updateWatchState({ isPlaying: false });
+          }}
+          // We omit onSeek here to avoid React 19 "Unknown event handler property" warning
+          // Seeking is detected via onProgress jump check above
+          config={{
+            youtube: {
+              embedOptions: {
+                showinfo: 0,
+                rel: 0,
+                modestbranding: 1
+              }
+            }
+          }}
         />
         <button 
           onClick={onClose}
@@ -91,14 +138,7 @@ export default function WatchTogether({
             className="text-[9px] font-bold text-white/40 hover:text-white transition-colors uppercase flex items-center gap-1 active:scale-95"
           >
             <RotateCcw size={10} />
-            Sync & Refresh
-          </button>
-          
-          <button 
-            onClick={() => updateWatchState({ currentTime: (watchState?.currentTime || 0) + 30 })}
-            className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors uppercase flex items-center gap-1 active:scale-95"
-          >
-            Jump +30s
+            Force Sync
           </button>
         </div>
       </div>

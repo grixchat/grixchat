@@ -35,6 +35,7 @@ export default function HomeTab() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [activeCommentPostId, setActiveCommentPostId] = useState<string | null>(null);
+  const [activeCommentCollection, setActiveCommentCollection] = useState<'posts' | 'tube_videos'>('posts');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -332,12 +333,19 @@ export default function HomeTab() {
                   video={item} 
                   currentUserData={currentUserData} 
                   isActive={activeVideoId === item.id}
+                  onCommentClick={(videoId) => {
+                    setActiveCommentCollection('tube_videos');
+                    setActiveCommentPostId(videoId);
+                  }}
                 />
               ) : (
                 <PostCard 
                   post={item} 
                   currentUserData={currentUserData} 
-                  onCommentClick={(postId) => setActiveCommentPostId(postId)}
+                  onCommentClick={(postId) => {
+                    setActiveCommentCollection('posts');
+                    setActiveCommentPostId(postId);
+                  }}
                 />
               )}
             </div>
@@ -365,6 +373,7 @@ export default function HomeTab() {
         isOpen={!!activeCommentPostId}
         onClose={() => setActiveCommentPostId(null)}
         currentUserData={currentUserData}
+        collectionName={activeCommentCollection}
       />
     </div>
   );

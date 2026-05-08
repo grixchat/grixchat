@@ -39,6 +39,7 @@ import {
   onSnapshot,
   updateDoc,
   arrayUnion,
+  arrayRemove,
   serverTimestamp
 } from 'firebase/firestore';
 
@@ -74,6 +75,7 @@ export default function ChatScreen() {
   const [receiverActiveChatId, setReceiverActiveChatId] = useState<string | null>(null);
   const [receiverLastSeen, setReceiverLastSeen] = useState<any>(null);
   const [chatSettings, setChatSettings] = useState<any>(null);
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [watchData, setWatchData] = useState<any>(null);
   const [isWatchMode, setIsWatchMode] = useState(false);
 
@@ -185,6 +187,13 @@ export default function ChatScreen() {
       }
     });
 
+    // Fetch current user data for hidden/archived chats check
+    const userUnsubscribe = onSnapshot(doc(db, "users", auth.currentUser.uid), (snap) => {
+      if (snap.exists()) {
+        setCurrentUserData(snap.data());
+      }
+    });
+
     if (auth.currentUser) {
       const myStatusRef = rtdbRef(rtdb, `/status/${auth.currentUser.uid}`);
       update(myStatusRef, { activeChatId: receiverId });
@@ -194,6 +203,7 @@ export default function ChatScreen() {
       receiverUnsubscribe();
       statusUnsubscribe();
       settingsUnsubscribe();
+      userUnsubscribe();
       if (auth.currentUser) {
         const myStatusRef = rtdbRef(rtdb, `/status/${auth.currentUser.uid}`);
         update(myStatusRef, { activeChatId: null });
@@ -370,29 +380,34 @@ export default function ChatScreen() {
 
   const hideChat = async () => {
     if (!auth.currentUser) return;
+    const isHidden = currentUserData?.hiddenChats?.includes(chatId);
     try {
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        hiddenChats: arrayUnion(chatId)
+        hiddenChats: isHidden ? arrayRemove(chatId) : arrayUnion(chatId)
       });
-      navigate('/chats');
+      if (!isHidden) navigate('/chats');
     } catch (error) {
-      console.error("Error hiding chat:", error);
+      console.error("Error toggling hide chat:", error);
     }
   };
 
   const archiveChat = async () => {
     if (!auth.currentUser) return;
+    const isArchived = currentUserData?.archivedChats?.includes(chatId);
     try {
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        archivedChats: arrayUnion(chatId)
+        archivedChats: isArchived ? arrayRemove(chatId) : arrayUnion(chatId)
       });
-      navigate('/chats');
+      if (!isArchived) navigate('/chats');
     } catch (error) {
-      console.error("Error archiving chat:", error);
+      console.error("Error toggling archive chat:", error);
     }
   };
 
   const { theme, setTheme, chatBackground, resolvedTheme } = useTheme();
+
+  const isHidden = currentUserData?.hiddenChats?.includes(chatId);
+  const isArchived = currentUserData?.archivedChats?.includes(chatId);
 
   return (
     <div className="flex flex-col h-full w-full max-w-full bg-[var(--bg-main)] overflow-hidden relative">
@@ -412,6 +427,8 @@ export default function ChatScreen() {
         deleteChat={deleteChat}
         hideChat={hideChat}
         archiveChat={archiveChat}
+        isHidden={isHidden}
+        isArchived={isArchived}
         optionsRef={optionsRef}
         isTyping={isOtherTyping}
         receiverStatus={receiverStatus}
@@ -471,6 +488,18 @@ export default function ChatScreen() {
               const prevMsg = index > 0 ? currentMessages[index - 1] : null;
               const isSameSender = prevMsg?.senderId === msg.senderId;
               
+              if (msg.type === 'system') {
+                return (
+                  <div key={msg.id} className="flex justify-center my-4 w-full">
+                    <div className="bg-black/5 backdrop-blur-sm px-4 py-1.5 rounded-full border border-black/5 shadow-sm">
+                      <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                        {msg.text}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                   <div 
                     key={msg.id} 

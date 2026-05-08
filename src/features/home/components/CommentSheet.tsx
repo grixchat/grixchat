@@ -10,9 +10,10 @@ interface CommentSheetProps {
   isOpen: boolean;
   onClose: () => void;
   currentUserData: any;
+  collectionName?: string;
 }
 
-export default function CommentSheet({ postId, isOpen, onClose, currentUserData }: CommentSheetProps) {
+export default function CommentSheet({ postId, isOpen, onClose, currentUserData, collectionName = 'posts' }: CommentSheetProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData 
 
     setLoading(true);
     const q = query(
-      collection(db, 'posts', postId, 'comments'),
+      collection(db, collectionName, postId, 'comments'),
       orderBy('createdAt', 'desc')
     );
 
@@ -34,7 +35,7 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData 
     });
 
     return () => unsub();
-  }, [postId, isOpen]);
+  }, [postId, isOpen, collectionName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +43,7 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData 
 
     setSubmitting(true);
     try {
-      await addDoc(collection(db, 'posts', postId, 'comments'), {
+      await addDoc(collection(db, collectionName, postId, 'comments'), {
         userId: auth.currentUser.uid,
         userName: currentUserData?.fullName || 'User',
         userAvatar: currentUserData?.photoURL || '',
@@ -51,8 +52,8 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData 
         likes: 0
       });
 
-      // Update comment count on post
-      await updateDoc(doc(db, 'posts', postId), {
+      // Update comment count on parent doc
+      await updateDoc(doc(db, collectionName, postId), {
         comments: increment(1)
       });
 
