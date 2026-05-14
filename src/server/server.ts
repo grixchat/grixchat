@@ -434,7 +434,6 @@ app.post("/api/github/push", async (req, res) => {
 // GitHub Batch Push (Atomic commit for multiple files)
 app.post("/api/github/push-batch", async (req, res) => {
   const { token, owner, repo, files, message, branch = 'main' } = req.body;
-  // files: Array<{ path: string, content: string }> (content is base64)
   
   try {
     const headers = { 
@@ -442,37 +441,58 @@ app.post("/api/github/push-batch", async (req, res) => {
       Accept: 'application/vnd.github.v3+json'
     };
 
+    console.log(`Starting batch push for ${files.length} files to ${owner}/${repo} on branch ${branch}`);
+
     // 1. Get the latest commit SHA of the branch
     const branchRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/branches/${branch}`, { headers });
     const parentSha = branchRes.data.commit.sha;
     const baseTreeSha = branchRes.data.commit.commit.tree.sha;
 
-    // 2. Create blobs for each file
+    // 2. Create blobs for each file with concurrency control and delay to avoid rate limits
     const treeItems = [];
-    for (const file of files) {
-      try {
-        const blobRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
-          content: file.content,
-          encoding: 'base64'
-        }, { headers });
-        
-        treeItems.push({
-          path: file.path,
-          mode: '100644',
-          type: 'blob',
-          sha: blobRes.data.sha
-        });
-      } catch (err: any) {
-        console.error(`Failed to create blob for ${file.path}:`, err.response?.data || err.message);
-        throw new Error(`Failed to upload ${file.path}: ${err.response?.data?.message || err.message}`);
+    const BATCH_SIZE = 5;
+    const DELAY_BETWEEN_BATCHES = 400; // ms
+
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(files.length / BATCH_SIZE)} (${batch.length} files)`);
+      
+      const results = await Promise.all(batch.map(async (file) => {
+        try {
+          const blobRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
+            content: file.content,
+            encoding: 'base64'
+          }, { headers });
+          
+          return {
+            path: file.path,
+            mode: '100644',
+            type: 'blob',
+            sha: blobRes.data.sha
+          };
+        } catch (err: any) {
+          console.error(`Failed to create blob for ${file.path}:`, err.response?.data || err.message);
+          throw new Error(`Failed to upload ${file.path}: ${err.response?.data?.message || err.message}`);
+        }
+      }));
+      
+      treeItems.push(...results);
+      
+      // Small pause between batches if there are more files to avoid triggering secondary rate limits
+      if (i + BATCH_SIZE < files.length) {
+        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
+
+    console.log(`Successfully created ${treeItems.length} blobs. Creating tree...`);
 
     // 3. Create a new tree
     const treeRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
       base_tree: baseTreeSha,
       tree: treeItems
     }, { headers });
+
+    console.log(`Tree created: ${treeRes.data.sha}. Creating commit...`);
 
     // 4. Create a new commit
     const commitRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
@@ -481,12 +501,15 @@ app.post("/api/github/push-batch", async (req, res) => {
       parents: [parentSha]
     }, { headers });
 
+    console.log(`Commit created: ${commitRes.data.sha}. Updating reference...`);
+
     // 5. Update the branch reference
     const refRes = await axios.patch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
       sha: commitRes.data.sha,
       force: false
     }, { headers });
 
+    console.log(`Successfully updated reference for branch ${branch}`);
     res.json(refRes.data);
   } catch (error: any) {
     console.error("Batch push error:", error.response?.data || error.message);
