@@ -431,6 +431,16 @@ app.post("/api/github/push", async (req, res) => {
   }
 });
 
+import crypto from "crypto";
+
+// Helper to calculate GitHub's blob SHA
+function calculateGitHubSha(contentBase64: string): string {
+  const content = Buffer.from(contentBase64, 'base64');
+  const header = `blob ${content.length}\0`;
+  const store = Buffer.concat([Buffer.from(header), content]);
+  return crypto.createHash('sha1').update(store).digest('hex');
+}
+
 // GitHub Batch Push (Atomic commit for multiple files)
 app.post("/api/github/push-batch", async (req, res) => {
   const { token, owner, repo, files, message, branch = 'main' } = req.body;
@@ -441,23 +451,51 @@ app.post("/api/github/push-batch", async (req, res) => {
       Accept: 'application/vnd.github.v3+json'
     };
 
-    console.log(`Starting batch push for ${files.length} files to ${owner}/${repo} on branch ${branch}`);
+    console.log(`Starting smart batch push for ${files.length} files to ${owner}/${repo} on branch ${branch}`);
 
     // 1. Get the latest commit SHA of the branch
     const branchRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/branches/${branch}`, { headers });
     const parentSha = branchRes.data.commit.sha;
     const baseTreeSha = branchRes.data.commit.commit.tree.sha;
 
-    // 2. Create blobs for each file with concurrency control and delay to avoid rate limits
+    // 2. Fetch the current recursive tree to compare SHAs
+    console.log(`Fetching current tree for comparison...`);
+    const existingTreeRes = await axios.get(`https://api.github.com/repos/${owner}/${repo}/git/trees/${baseTreeSha}?recursive=1`, { headers });
+    const existingFiles = new Map<string, string>(); // path -> sha
+    if (existingTreeRes.data.tree) {
+      existingTreeRes.data.tree.forEach((node: any) => {
+        if (node.type === 'blob') {
+          existingFiles.set(node.path, node.sha);
+        }
+      });
+    }
+
+    // 3. Filter files that actually changed
+    const modifiedFiles = files.filter((file: any) => {
+      const localSha = calculateGitHubSha(file.content);
+      const remoteSha = existingFiles.get(file.path);
+      return localSha !== remoteSha;
+    });
+
+    console.log(`Smart Sync: ${modifiedFiles.length} of ${files.length} files changed.`);
+
+    if (modifiedFiles.length === 0) {
+      return res.json({ 
+        message: "No changes detected. Repository is already up to date.",
+        noChanges: true 
+      });
+    }
+
+    // 4. Create blobs for each modified file with concurrency control
     const treeItems = [];
     const BATCH_SIZE = 5;
     const DELAY_BETWEEN_BATCHES = 400; // ms
 
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      const batch = files.slice(i, i + BATCH_SIZE);
-      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(files.length / BATCH_SIZE)} (${batch.length} files)`);
+    for (let i = 0; i < modifiedFiles.length; i += BATCH_SIZE) {
+      const batch = modifiedFiles.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(modifiedFiles.length / BATCH_SIZE)} (${batch.length} files)`);
       
-      const results = await Promise.all(batch.map(async (file) => {
+      const results = await Promise.all(batch.map(async (file: any) => {
         try {
           const blobRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/blobs`, {
             content: file.content,
@@ -478,32 +516,27 @@ app.post("/api/github/push-batch", async (req, res) => {
       
       treeItems.push(...results);
       
-      // Small pause between batches if there are more files to avoid triggering secondary rate limits
-      if (i + BATCH_SIZE < files.length) {
+      if (i + BATCH_SIZE < modifiedFiles.length) {
         await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
       }
     }
 
-    console.log(`Successfully created ${treeItems.length} blobs. Creating tree...`);
+    console.log(`Successfully created ${treeItems.length} new blobs. Creating updated tree...`);
 
-    // 3. Create a new tree
+    // 5. Create a new tree (basing it on the existing baseTreeSha to merge changes)
     const treeRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/trees`, {
       base_tree: baseTreeSha,
       tree: treeItems
     }, { headers });
 
-    console.log(`Tree created: ${treeRes.data.sha}. Creating commit...`);
-
-    // 4. Create a new commit
+    // 6. Create a new commit
     const commitRes = await axios.post(`https://api.github.com/repos/${owner}/${repo}/git/commits`, {
       message,
       tree: treeRes.data.sha,
       parents: [parentSha]
     }, { headers });
 
-    console.log(`Commit created: ${commitRes.data.sha}. Updating reference...`);
-
-    // 5. Update the branch reference
+    // 7. Update the branch reference
     const refRes = await axios.patch(`https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
       sha: commitRes.data.sha,
       force: false
@@ -512,7 +545,7 @@ app.post("/api/github/push-batch", async (req, res) => {
     console.log(`Successfully updated reference for branch ${branch}`);
     res.json(refRes.data);
   } catch (error: any) {
-    console.error("Batch push error:", error.response?.data || error.message);
+    console.error("Smart Batch Push error:", error.response?.data || error.message);
     res.status(error.response?.status || 500).json(error.response?.data || { message: error.message });
   }
 });
