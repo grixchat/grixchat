@@ -22,7 +22,6 @@ export default function GrixAIScreen() {
   const [activeMessageMenu, setActiveMessageMenu] = useState<any | null>(null);
   const [showReactionPicker, setShowReactionPicker] = useState<any | null>(null);
   const [replyingTo, setReplyingTo] = useState<any>(null);
-  const [visibleButtonsId, setVisibleButtonsId] = useState<string | null>(null);
   const [editingMessage, setEditingMessage] = useState<any | null>(null);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -194,21 +193,12 @@ export default function GrixAIScreen() {
         setActiveMessageMenu={setActiveMessageMenu}
         replyingTo={replyingTo}
         setReplyingTo={setReplyingTo}
-        visibleButtonsId={visibleButtonsId}
-        setVisibleButtonsId={setVisibleButtonsId}
         showReactionPicker={showReactionPicker}
         setShowReactionPicker={setShowReactionPicker}
         receiverStatus="online"
         handleMessageTap={(e, msg) => {
           e.stopPropagation();
-          setShowReactionPicker(showReactionPicker?.id === msg.id ? null : msg);
-          setActiveMessageMenu(null);
-        }}
-        handleMessageLongPress={(e, msg) => {
-          e.stopPropagation();
-          if (window.navigator.vibrate) window.navigator.vibrate(50);
-          setActiveMessageMenu(msg);
-          setShowReactionPicker(null);
+          setActiveMessageMenu(activeMessageMenu?.id === msg.id ? null : msg);
         }}
         performReactToMessage={() => {}}
         isOtherTyping={isTyping}

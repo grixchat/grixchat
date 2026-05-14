@@ -88,6 +88,7 @@ const TimeSpentScreen = React.lazy(() => import('./features/settings/TimeSpentSc
 const FavoritesScreen = React.lazy(() => import('./features/settings/FavoritesScreen'));
 const BlockedAccountsScreen = React.lazy(() => import('./features/settings/BlockedAccountsScreen'));
 const MutedAccountsScreen = React.lazy(() => import('./features/settings/MutedAccountsScreen'));
+const DataUsageScreen = React.lazy(() => import('./features/settings/DataUsageScreen'));
 const AnalyticsScreen = React.lazy(() => import('./features/analytics/AnalyticsScreen'));
 const NewGroupScreen = React.lazy(() => import('./features/chat/NewGroupScreen'));
 const GroupSettingsScreen = React.lazy(() => import('./features/chat/GroupSettingsScreen'));
@@ -308,6 +309,7 @@ export default function App() {
                     <Route path="/setup-lock/:type" element={user ? <SetupLockScreen /> : <Navigate to="/login" />} />
                     <Route path="/verify-lock" element={user ? <VerifyLockScreen /> : <Navigate to="/login" />} />
                     <Route path="/notifications-settings" element={user ? <NotificationsSettingsScreen /> : <Navigate to="/login" />} />
+                    <Route path="/data-usage" element={user ? <DataUsageScreen /> : <Navigate to="/login" />} />
                     <Route path="/help" element={user ? <HelpScreen /> : <Navigate to="/login" />} />
                     <Route path="/app-info" element={user ? <AppInfoScreen /> : <Navigate to="/login" />} />
                     <Route path="/time-spent" element={user ? <TimeSpentScreen /> : <Navigate to="/login" />} />

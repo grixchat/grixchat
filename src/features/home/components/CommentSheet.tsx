@@ -74,7 +74,7 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.05 }}
             onClick={onClose}
             className="fixed inset-0 bg-black/60 z-[200] backdrop-blur-sm"
           />
@@ -86,10 +86,10 @@ export default function CommentSheet({ postId, isOpen, onClose, currentUserData,
             exit={{ y: '100%' }}
             transition={{ 
               type: 'spring', 
-              damping: 35, 
-              stiffness: 450, 
-              mass: 0.8,
-              restDelta: 0.01 
+              damping: 40, 
+              stiffness: 1200, 
+              mass: 0.2, 
+              restDelta: 0.001 
             }}
             className="fixed bottom-0 left-0 right-0 h-[80dvh] bg-[var(--bg-card)] z-[201] rounded-t-[32px] border-t border-[var(--border-color)] flex flex-col overflow-hidden shadow-2xl"
           >

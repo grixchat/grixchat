@@ -28,13 +28,10 @@ interface MessageBubbleProps {
   setActiveMessageMenu: (msg: any) => void;
   replyingTo: any;
   setReplyingTo: (msg: any) => void;
-  visibleButtonsId: string | null;
-  setVisibleButtonsId: (id: string | null) => void;
   showReactionPicker: any;
   setShowReactionPicker: (msg: any) => void;
   receiverStatus: string;
   handleMessageTap: (e: any, msg: any) => void;
-  handleMessageLongPress: (e: any, msg: any) => void;
   performReactToMessage: (id: string, emoji: string) => void;
 }
 
@@ -48,13 +45,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   setActiveMessageMenu,
   replyingTo,
   setReplyingTo,
-  visibleButtonsId,
-  setVisibleButtonsId,
   showReactionPicker,
   setShowReactionPicker,
   receiverStatus,
   handleMessageTap,
-  handleMessageLongPress,
   performReactToMessage
 }) => {
   const navigate = useNavigate();
@@ -73,47 +67,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div className={`flex w-full max-w-full ${isMe ? 'justify-end' : 'justify-start'} ${!isSameSender ? 'mt-2' : 'mt-0.5'}`}>
-      <div className="relative group max-w-[75%] min-w-0">
+      <div className="relative group max-w-[75%] min-w-0 flex items-center gap-2">
         {!isSameSender && (
           <div className={`absolute top-0 w-3 h-3 ${isMe ? '-right-2 bg-[var(--bubble-own)]' : '-left-2 bg-[var(--bubble-other)]'}`} 
                style={{ clipPath: isMe ? 'polygon(0 0, 0 100%, 100% 0)' : 'polygon(100% 0, 100% 100%, 0 0)' }}>
           </div>
         )}
 
+        {/* Swipe Reveal Icon (Right side) */}
+        <div className="absolute right-[-40px] opacity-0 group-drag:opacity-100 transition-opacity flex items-center justify-center w-10 h-10">
+          <div className="p-2 bg-[var(--primary)]/10 rounded-full text-[var(--primary)] scale-110">
+            <Reply size={16} />
+          </div>
+        </div>
+
         <motion.div 
           drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.5}
+          dragConstraints={{ left: -80, right: 0 }}
+          dragElastic={0.4}
           dragSnapToOrigin
           onDragStart={(e) => e.stopPropagation()}
-          onDrag={(_, info) => {
-            if (!isMe) {
-              if (info.offset.x > 70 && replyingTo?.id !== msg.id) {
-                setReplyingTo(msg);
-                if (window.navigator.vibrate) window.navigator.vibrate(10);
-              }
-              if (info.offset.x < -70 && activeMessageMenu?.id !== msg.id) {
-                setActiveMessageMenu(msg);
-                if (window.navigator.vibrate) window.navigator.vibrate(10);
-              }
-            } else {
-              if (info.offset.x < -70 && replyingTo?.id !== msg.id) {
-                setReplyingTo(msg);
-                if (window.navigator.vibrate) window.navigator.vibrate(10);
-              }
-              if (info.offset.x > 70 && activeMessageMenu?.id !== msg.id) {
-                setActiveMessageMenu(msg);
-                if (window.navigator.vibrate) window.navigator.vibrate(10);
-              }
+          onDragEnd={(_, info) => {
+            // Right to left swipe (negative x) triggers reply
+            if (info.offset.x < -50) {
+              setReplyingTo(msg);
+              if (window.navigator.vibrate) window.navigator.vibrate(15);
             }
           }}
-          onTap={(e) => handleMessageTap(e, msg)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            handleMessageLongPress(e, msg);
-          }}
-          className={`px-2.5 py-1.5 rounded-lg shadow-sm relative cursor-pointer active:scale-[0.98] transition-transform select-none max-w-full ${
-            activeMessageMenu?.id === msg.id ? 'z-50' : 'z-10'
+          onClick={(e) => handleMessageTap(e, msg)}
+          className={`px-2.5 py-1.5 rounded-lg shadow-sm relative cursor-pointer active:scale-[0.98] transition-all select-none max-w-full overflow-visible ${
+            activeMessageMenu?.id === msg.id ? 'z-50 ring-2 ring-[var(--primary)]/20' : 'z-10'
           } ${
             isMe 
               ? 'bg-[var(--bubble-own)] text-[var(--bubble-text-own)]' 
@@ -271,14 +254,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
         </motion.div>
 
-        <div className={`absolute top-1/2 -translate-y-1/2 transition-all duration-200 flex items-center gap-1 whitespace-nowrap z-20 ${isMe ? 'right-full mr-2' : 'left-full ml-2'} ${activeMessageMenu?.id === msg.id || visibleButtonsId === msg.id ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto'}`}>
-          <button onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); setVisibleButtonsId(null); }} className="p-1.5 bg-white hover:bg-zinc-50 rounded-full text-[var(--primary)] shadow-md border border-zinc-100">
-            <Reply size={14} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); setActiveMessageMenu(activeMessageMenu?.id === msg.id ? null : msg); setVisibleButtonsId(null); }} className="p-1.5 bg-white hover:bg-zinc-50 rounded-full text-[var(--primary)] shadow-md border border-zinc-100">
-            <MoreVertical size={14} />
-          </button>
-        </div>
       </div>
     </div>
   );

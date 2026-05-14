@@ -37,8 +37,6 @@ export default function ChatScreen() {
   const [activeMessageMenu, setActiveMessageMenu] = useState<any | null>(null);
   const [showReactionPicker, setShowReactionPicker] = useState<any | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [visibleButtonsId, setVisibleButtonsId] = useState<string | null>(null);
-  const [lastTap, setLastTap] = useState<{id: string, time: number}>({id: '', time: 0});
   const [isSending, setIsSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -187,18 +185,14 @@ export default function ChatScreen() {
   };
 
   const handleMessageTap = useCallback((e: React.MouseEvent | React.TouchEvent, msg: any) => {
+    if (e.type === 'touchstart' && e.cancelable) e.preventDefault();
     e.stopPropagation();
-    setShowReactionPicker(showReactionPicker?.id === msg.id ? null : msg);
-    setActiveMessageMenu(null);
-    setVisibleButtonsId(msg.id);
-  }, [showReactionPicker]);
-
-  const handleMessageLongPress = useCallback((e: React.MouseEvent | React.TouchEvent, msg: any) => {
-    e.stopPropagation();
-    if (window.navigator.vibrate) window.navigator.vibrate(50);
+    
+    // Open message options sheet on single tap
     setActiveMessageMenu(msg);
     setShowReactionPicker(null);
-    setVisibleButtonsId(null);
+    
+    if (window.navigator.vibrate) window.navigator.vibrate(5);
   }, []);
 
   const startEdit = useCallback((msg: any) => {
@@ -307,8 +301,6 @@ export default function ChatScreen() {
         setActiveMessageMenu={setActiveMessageMenu}
         replyingTo={replyingTo}
         setReplyingTo={setReplyingTo}
-        visibleButtonsId={visibleButtonsId}
-        setVisibleButtonsId={setVisibleButtonsId}
         showReactionPicker={showReactionPicker}
         setShowReactionPicker={setShowReactionPicker}
         receiverStatus={receiverStatus}
