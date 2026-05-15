@@ -30,7 +30,9 @@ export const useConversations = (activeFilter: string) => {
 
     const q = query(
       collection(db, "conversations"),
-      where("participants", "array-contains", auth.currentUser.uid)
+      where("participants", "array-contains", auth.currentUser.uid),
+      orderBy("lastMessageTimestamp", "desc"),
+      limit(30)
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
