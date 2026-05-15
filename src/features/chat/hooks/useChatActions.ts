@@ -36,12 +36,15 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
       const snapshot = await getCountFromServer(qCount);
       const count = snapshot.data().count;
 
+      // If more than 50 messages, delete the overflow
       if (count > 50) {
+        const deleteCount = count - 50;
+        // Batch deletion can handle up to 500 operations, so 400 is safe
         const qOldest = query(
           messagesRef, 
           where("chatId", "==", targetChatId),
           orderBy("timestamp", "asc"),
-          limit(25)
+          limit(Math.min(deleteCount, 400))
         );
         
         const oldMsgs = await getDocs(qOldest);
@@ -49,11 +52,11 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           const batch = writeBatch(db);
           oldMsgs.docs.forEach(doc => batch.delete(doc.ref));
           await batch.commit();
-          console.log(`Auto-cleaned up ${oldMsgs.size} messages for chat ${targetChatId}`);
+          console.log(`Auto-cleaned up ${oldMsgs.size} messages for chat ${targetChatId}. Remaining: ${count - oldMsgs.size}`);
         }
       }
     } catch (error) {
-      console.warn("Auto-cleanup failed:", error);
+      console.warn("Auto-cleanup failed (check for missing index):", error);
     }
   }, []);
 
