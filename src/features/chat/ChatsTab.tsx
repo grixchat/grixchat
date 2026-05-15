@@ -24,8 +24,8 @@ export default function ChatsTab() {
   const isSecretCodeEntered = searchTerm && userData?.hiddenChatSettings?.secretCode && searchTerm === userData.hiddenChatSettings.secretCode;
 
   const filteredConversations = conversations.filter(c => {
-    const isHidden = userData?.hiddenChats?.includes(c.id);
-    const isArchived = userData?.archivedChats?.includes(c.id);
+    const isHidden = Array.isArray(userData?.hiddenChats) && userData.hiddenChats.includes(c.id);
+    const isArchived = Array.isArray(userData?.archivedChats) && userData.archivedChats.includes(c.id);
     
     // Only show hidden chats if the secret code is entered
     if (isHidden && !isSecretCodeEntered) return false;

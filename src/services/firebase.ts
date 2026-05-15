@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, GithubAuthProvider, setPersistence, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp as rtdbTimestamp } from "firebase/database";
 import { getMessaging, isSupported } from "firebase/messaging";
@@ -64,18 +64,14 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const rtdb = getDatabase(app);
 
-// Enable Offline Persistence
+// Offline persistence disabled to avoid SecurityErrors in iframe (AI Studio preview) environments
+/*
 if (typeof window !== 'undefined') {
   enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled in one tab at a time.
-      console.warn('Firestore persistence failed-precondition (multiple tabs)');
-    } else if (err.code === 'unimplemented') {
-      // The current browser does not support all of the features required to enable persistence
-      console.warn('Firestore persistence unimplemented in this browser');
-    }
+    ...
   });
 }
+*/
 
 // Messaging may not be supported in some environments (like iframes)
 export const messagingPromise = (async () => {

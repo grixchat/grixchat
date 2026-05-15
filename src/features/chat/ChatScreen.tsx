@@ -81,8 +81,17 @@ export default function ChatScreen() {
     editMessage: performEditMessage, 
     deleteMessage: performDeleteMessage, 
     reactToMessage: performReactToMessage, 
-    clearChat: performClearChat 
+    clearChat: performClearChat,
+    cleanupMessages
   } = useChatActions(chatId, receiverId || '', receiver, receiverActiveChatId);
+
+  // Trigger cleanup when first opening the chat
+  useEffect(() => {
+    if (chatId) {
+      console.log(`🔥 [AUTO-CLEANUP] Initializing cleanup for chat: ${chatId}`);
+      cleanupMessages(chatId).catch(err => console.error("Auto-cleanup on mount failed:", err));
+    }
+  }, [chatId, cleanupMessages]);
 
   const { isOtherTyping, handleTyping } = useTypingStatus(chatId, receiverId || '');
 
@@ -239,7 +248,7 @@ export default function ChatScreen() {
 
   const hideChat = async () => {
     if (!auth.currentUser) return;
-    const isHidden = currentUserData?.hiddenChats?.includes(chatId);
+    const isHidden = Array.isArray(currentUserData?.hiddenChats) && currentUserData.hiddenChats.includes(chatId);
     try {
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         hiddenChats: isHidden ? arrayRemove(chatId) : arrayUnion(chatId)
@@ -252,7 +261,7 @@ export default function ChatScreen() {
 
   const archiveChat = async () => {
     if (!auth.currentUser) return;
-    const isArchived = currentUserData?.archivedChats?.includes(chatId);
+    const isArchived = Array.isArray(currentUserData?.archivedChats) && currentUserData.archivedChats.includes(chatId);
     try {
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
         archivedChats: isArchived ? arrayRemove(chatId) : arrayUnion(chatId)
@@ -264,8 +273,8 @@ export default function ChatScreen() {
   };
 
   const { chatBackground } = useTheme();
-  const isHidden = currentUserData?.hiddenChats?.includes(chatId);
-  const isArchived = currentUserData?.archivedChats?.includes(chatId);
+  const isHidden = Array.isArray(currentUserData?.hiddenChats) && currentUserData.hiddenChats.includes(chatId);
+  const isArchived = Array.isArray(currentUserData?.archivedChats) && currentUserData.archivedChats.includes(chatId);
 
   return (
     <div className="flex flex-col h-full w-full max-w-full bg-[var(--bg-main)] overflow-hidden relative">

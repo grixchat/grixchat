@@ -36,27 +36,64 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
       const snapshot = await getCountFromServer(qCount);
       const count = snapshot.data().count;
 
-      // If more than 50 messages, delete the overflow
-      if (count > 50) {
-        const deleteCount = count - 50;
-        // Batch deletion can handle up to 500 operations, so 400 is safe
-        const qOldest = query(
+      console.log(`🔍 [CLEANUP CHECK] Chat: ${targetChatId} | Current total messages: ${count}`);
+
+      // If more than 25 messages, delete the overflow back to 20
+      if (count >= 25) {
+        const deleteCount = count - 20;
+        console.log(`⚠️ [OVERFLOW DETECTED] Attempting to remove ${deleteCount} oldest messages to keep last 20...`);
+        
+        // Fetch WITHOUT orderBy to avoid composite index requirement
+        // We fetch up to 500 messages to clean up existing large chats efficiently
+        const qFetch = query(
           messagesRef, 
           where("chatId", "==", targetChatId),
-          orderBy("timestamp", "asc"),
-          limit(Math.min(deleteCount, 400))
+          limit(500) 
         );
         
-        const oldMsgs = await getDocs(qOldest);
-        if (!oldMsgs.empty) {
+        const msgSnapshot = await getDocs(qFetch);
+        if (!msgSnapshot.empty) {
+          // Sort in memory by timestamp to find oldest
+          const sortedDocs = msgSnapshot.docs.sort((a, b) => {
+            const dataA = a.data();
+            const dataB = b.data();
+            
+            // Robust timestamp extraction
+            const getTime = (data: any) => {
+              if (!data.timestamp) return 0;
+              if (typeof data.timestamp.toMillis === 'function') return data.timestamp.toMillis();
+              if (data.timestamp.seconds) return data.timestamp.seconds * 1000;
+              if (data.timestamp instanceof Date) return data.timestamp.getTime();
+              return 0;
+            };
+
+            const timeA = getTime(dataA);
+            const timeB = getTime(dataB);
+            
+            if (timeA === timeB) {
+              // Tie-break with document ID to ensure stable sort
+              return a.id.localeCompare(b.id);
+            }
+            return timeA - timeB; // Oldest first
+          });
+
+          const docsToDelete = sortedDocs.slice(0, Math.min(deleteCount, sortedDocs.length));
           const batch = writeBatch(db);
-          oldMsgs.docs.forEach(doc => batch.delete(doc.ref));
+          
+          docsToDelete.forEach(doc => {
+            console.log(`🗑️ Deleting old message: ${doc.id}`);
+            batch.delete(doc.ref);
+          });
+          
           await batch.commit();
-          console.log(`Auto-cleaned up ${oldMsgs.size} messages for chat ${targetChatId}. Remaining: ${count - oldMsgs.size}`);
+          console.log(`✅ [CLEANUP COMPLETE] Successfully removed ${docsToDelete.length} messages. New count should be ~20.`);
         }
+      } else {
+        console.log(`✨ [CLEANUP SKIP] Chat has ${count} messages (under limit of 25).`);
       }
-    } catch (error) {
-      console.warn("Auto-cleanup failed (check for missing index):", error);
+    } catch (error: any) {
+      console.error("❌ [CLEANUP FAILED ERROR]");
+      console.error("Message:", error?.message);
     }
   }, []);
 
@@ -105,7 +142,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
       localUrl: localPreviewUrl || null
     };
 
-    if (!receiverId.includes('_')) {
+    if (receiverId && typeof receiverId === 'string' && !receiverId.includes('_')) {
       messageData.receiverId = receiverId;
     }
 
@@ -165,7 +202,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
   }, [chatId, receiverId, receiver, receiverActiveChatId, cleanupMessages]);
 
   const updateConversation = useCallback(async (targetChatId: string, messageData: any, fileType: string) => {
-    if (targetChatId && targetChatId.trim() !== "" && (targetChatId.includes('_') || targetChatId.length > 5)) {
+    if (targetChatId && typeof targetChatId === 'string' && targetChatId.trim() !== "" && (targetChatId.includes('_') || targetChatId.length > 5)) {
       const conversationRef = doc(db, "conversations", targetChatId);
       const conversationSnap = await getDoc(conversationRef);
       const convData = conversationSnap.exists() ? conversationSnap.data() : null;
@@ -176,20 +213,33 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
         lastSenderId: auth.currentUser?.uid,
       };
 
-      if (convData) {
-        convData.participants.forEach((pId: string) => {
-          if (pId !== auth.currentUser?.uid) {
-            updateData[`unreadCount_${pId}`] = increment(1);
-          }
-        });
+      // If it's a new conversation, we MUST add participants
+      if (!convData) {
+        if (targetChatId.includes('_')) {
+          // Direct chat - extract participants from ID
+          updateData.participants = targetChatId.split('_');
+          updateData.type = 'direct';
+        } else {
+          // Fallback if it's a group, though group IDs shouldn't typically reach here without existing
+          updateData.participants = [auth.currentUser?.uid];
+          updateData.type = 'group';
+        }
       }
+
+      const participants = convData?.participants || updateData.participants || [];
+      participants.forEach((pId: string) => {
+        if (pId !== auth.currentUser?.uid) {
+          updateData[`unreadCount_${pId}`] = increment(1);
+        }
+      });
 
       await setDoc(conversationRef, updateData, { merge: true });
 
-      if (convData) {
-        const otherParticipants = convData.participants.filter((p: string) => p !== auth.currentUser?.uid);
+      if (participants.length > 0) {
+        const otherParticipants = participants.filter((p: string) => p !== auth.currentUser?.uid);
         otherParticipants.forEach(async (pId: string) => {
           if (otherParticipants.length === 1) {
+            // For now only supports one-to-one push
             const shouldNotify = receiverId !== 'gx-ai' && 
                                   receiver?.fcmTokens?.length > 0 && 
                                   receiverActiveChatId !== auth.currentUser?.uid;
@@ -294,5 +344,5 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
     await batch.commit();
   }, [chatId]);
 
-  return { sendMessage, editMessage, deleteMessage, reactToMessage, clearChat };
+  return { sendMessage, editMessage, deleteMessage, reactToMessage, clearChat, cleanupMessages };
 };
