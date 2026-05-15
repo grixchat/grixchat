@@ -21,6 +21,7 @@ import ChatHeader from '../../components/layout/ChatHeader.tsx';
 import ChatBottom from '../../components/layout/ChatBottom.tsx';
 import WatchTogether from './components/WatchTogether.tsx';
 import { MessageList } from './components/MessageList';
+import { ChatOptionsSheet } from './components/ChatOptionsSheet';
 
 export default function ChatScreen() {
   const { id: receiverId } = useParams();
@@ -38,8 +39,8 @@ export default function ChatScreen() {
   const [showReactionPicker, setShowReactionPicker] = useState<any | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | Blob | null>(null);
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -88,10 +89,10 @@ export default function ChatScreen() {
   useEffect(() => {
     if (location.state?.capturedImage) {
       const dataUrl = location.state.capturedImage;
-      setFilePreviewUrl(dataUrl);
+      setFilePreviewUrls([dataUrl]);
       fetch(dataUrl).then(res => res.blob()).then(blob => {
         const file = new File([blob], "camera_photo.jpg", { type: "image/jpeg" });
-        setSelectedFile(file);
+        setSelectedFiles([file]);
       });
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -137,50 +138,72 @@ export default function ChatScreen() {
   }, [isOtherTyping, scrollToBottom]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !auth.currentUser) return;
-    if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFilePreviewUrl(reader.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setFilePreviewUrl(null);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !auth.currentUser) return;
+    
+    const newFiles = [...selectedFiles, ...files];
+    setSelectedFiles(newFiles);
+
+    const newPreviewUrls = [...filePreviewUrls];
+    for (const file of files) {
+      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+        const url = URL.createObjectURL(file);
+        newPreviewUrls.push(url);
+      } else {
+        newPreviewUrls.push('');
+      }
     }
-    setSelectedFile(file);
+    setFilePreviewUrls(newPreviewUrls);
     if (e.target) e.target.value = '';
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!newMessage.trim() && !selectedFile) || !auth.currentUser || isSending || isUploading) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !auth.currentUser || isSending) return;
+    
     const textToSend = newMessage;
     const replyContext = replyingTo;
     const editMsg = editingMessage;
+    const filesToSend = [...selectedFiles];
+    
     setNewMessage('');
     setReplyingTo(null);
     setEditingMessage(null);
+    setSelectedFiles([]);
+    setFilePreviewUrls([]);
+    
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsSending(true);
+
     try {
       if (editMsg) {
         await performEditMessage(editMsg.id, textToSend);
       } else {
-        if (selectedFile) setIsUploading(true);
-        await performSendMessage({
-          text: textToSend,
-          file: selectedFile,
-          replyTo: replyContext,
-          onProgress: (p) => setUploadProgress(p)
-        });
-        setSelectedFile(null);
-        setFilePreviewUrl(null);
-        setUploadProgress(0);
+        // If there's text, send it first
+        if (textToSend) {
+          await performSendMessage({
+            text: textToSend,
+            replyTo: filesToSend.length === 0 ? replyContext : null // Only apply reply to text if no files
+          });
+        }
+        
+        // Send files in background
+        for (let i = 0; i < filesToSend.length; i++) {
+          const file = filesToSend[i];
+          const localUrl = filePreviewUrls[i];
+          
+          performSendMessage({
+            text: '', // Files sent individually
+            file,
+            localPreviewUrl: localUrl,
+            replyTo: i === 0 && !textToSend ? replyContext : null // Only apply reply to first file if no text
+          }).catch(err => console.error("Error sending file message:", err));
+        }
       }
     } catch (error) {
       console.error("Error sendMessage:", error);
     } finally {
       setIsSending(false);
-      setIsUploading(false);
     }
   };
 
@@ -331,18 +354,33 @@ export default function ChatScreen() {
         setShowPlusMenu={setShowPlusMenu}
         plusMenuRef={plusMenuRef}
         chatId={chatId}
-        filePreviewUrl={filePreviewUrl}
+        filePreviewUrls={filePreviewUrls}
         isUploading={isUploading}
         uploadProgress={uploadProgress}
-        setSelectedFile={(file: any) => setSelectedFile(file)}
-        setFilePreviewUrl={setFilePreviewUrl}
+        setSelectedFiles={setSelectedFiles}
+        setFilePreviewUrls={setFilePreviewUrls}
         textareaRef={textareaRef}
         handleTyping={handleTyping}
         showEmojiPicker={showEmojiPicker}
         setShowEmojiPicker={setShowEmojiPicker}
         emojiPickerRef={emojiPickerRef}
         isSending={isSending}
-        selectedFile={selectedFile}
+        selectedFiles={selectedFiles}
+      />
+
+      <ChatOptionsSheet 
+        isOpen={showOptions}
+        onClose={() => setShowOptions(false)}
+        receiver={receiver}
+        receiverId={receiverId}
+        isArchived={isArchived}
+        isHidden={isHidden}
+        isMuted={isMuted}
+        archiveChat={archiveChat}
+        hideChat={hideChat}
+        setIsMuted={setIsMuted}
+        deleteChat={deleteChat}
+        onWatchTogether={toggleWatchMode}
       />
     </div>
   );
