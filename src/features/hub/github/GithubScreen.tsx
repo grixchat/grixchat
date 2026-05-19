@@ -13,6 +13,7 @@ export default function GithubScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRepo, setSelectedRepo] = useState<GithubRepo | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [isSequential, setIsSequential] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -112,6 +113,8 @@ export default function GithubScreen() {
       <GithubRepoDetail 
         repo={selectedRepo} 
         token={token!} 
+        isSequential={isSequential}
+        setIsSequential={setIsSequential}
         onBack={() => setSelectedRepo(null)} 
       />
     );
@@ -119,7 +122,25 @@ export default function GithubScreen() {
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)]">
-      <GithubHeader title="GitHub" />
+      <GithubHeader 
+        title="GitHub" 
+        rightElement={
+          <div className="flex items-center gap-2 px-2">
+             <div className="flex flex-col items-end mr-1">
+                <span className="text-[8px] font-black uppercase text-[var(--text-secondary)] opacity-50">Bulk Mode</span>
+             </div>
+             <button 
+                onClick={() => setIsSequential(!isSequential)}
+                className={`w-8 h-4 rounded-full p-0.5 transition-all ${isSequential ? 'bg-orange-500' : 'bg-zinc-700'}`}
+              >
+                <motion.div 
+                  className="w-3 h-3 bg-white rounded-full"
+                  animate={{ x: isSequential ? 16 : 0 }}
+                />
+              </button>
+          </div>
+        }
+      />
       {!token ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <div className="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mb-6 shadow-2xl">

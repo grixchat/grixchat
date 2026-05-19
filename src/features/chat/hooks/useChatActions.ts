@@ -20,7 +20,7 @@ import {
 import { db, auth } from '../../../services/firebase.ts';
 import { ImageService } from '../../../services/ImageService.ts';
 import { VideoService } from '../../../services/VideoService.ts';
-import { GofileService } from '../services/GofileService.ts';
+import { SupabaseStorageService } from '../../../services/SupabaseStorageService.ts';
 import { AudioService } from '../../../services/AudioService.ts';
 import { toDate } from '../../../utils/dateUtils.ts';
 
@@ -172,7 +172,7 @@ export const useChatActions = (chatId: string, receiverId: string, receiver: any
           } else if (file.type.startsWith('audio/')) {
             finalUrl = await AudioService.uploadAudio(file, updateProgress);
           } else {
-            finalUrl = await GofileService.uploadFile(file as File);
+            finalUrl = await SupabaseStorageService.uploadDocument(file as File);
             await updateProgress(100);
           }
 

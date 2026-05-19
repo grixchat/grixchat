@@ -31,16 +31,17 @@ export default function ChatsTab() {
     if (isHidden && !isSecretCodeEntered) return false;
     if (isArchived) return false;
 
-    const matchesSearch = c.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         c.username.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (c.user || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (c.username || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesSearch;
   });
 
   const filteredOtherUsers = otherUsers.filter(u => {
     if (!searchTerm) return true;
-    return u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           u.username?.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    return (u.fullName || "")?.toLowerCase().includes(term) || 
+           (u.username || "")?.toLowerCase().includes(term);
   });
 
   return (

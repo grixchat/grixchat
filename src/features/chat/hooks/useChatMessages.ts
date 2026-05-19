@@ -70,8 +70,15 @@ export const useChatMessages = (chatId: string, initialLimit: number = 10) => {
           });
         }
 
-        batch.commit().catch(err => console.error("Error marking as read:", err));
+        batch.commit().catch(err => {
+          console.error("Error committing batch (marking as read):", err);
+          // Don't throw here to avoid crashing the whole sync for a background write
+        });
       }
+    }, (err) => {
+      console.error("Messages sync error:", err);
+      setLoading(false);
+      setLoadingMore(false);
     });
 
     return () => unsubscribe();

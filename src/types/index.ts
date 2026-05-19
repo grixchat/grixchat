@@ -40,6 +40,10 @@ export interface UserProfile {
       vibrate?: boolean;
     };
   };
+  preferences?: {
+    theme?: 'light' | 'dark' | 'system';
+    fontSize?: 'small' | 'medium' | 'large';
+  };
   fcmTokens?: string[];
   isPrivate?: boolean;
   profileType?: 'public' | 'private';

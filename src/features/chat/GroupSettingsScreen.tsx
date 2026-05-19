@@ -50,7 +50,7 @@ export default function GroupSettingsScreen() {
         const data = snap.data();
         setGroup({ id: snap.id, ...data });
         setNewName(data.name);
-        setIsAdmin(data.admins?.includes(auth.currentUser?.uid));
+        setIsAdmin(data.admins?.includes(auth.currentUser?.uid) || false);
 
         // Fetch member details
         const memberData = await Promise.all(
@@ -136,7 +136,7 @@ export default function GroupSettingsScreen() {
   };
 
   const makeAdmin = async (uid: string) => {
-    if (!chatId || !isAdmin || group.admins.includes(uid)) return;
+    if (!chatId || !isAdmin || (group.admins || []).includes(uid)) return;
     try {
       await updateDoc(doc(db, "conversations", chatId), {
         admins: arrayUnion(uid)
@@ -271,7 +271,7 @@ export default function GroupSettingsScreen() {
 
             <div className="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] divide-y divide-[var(--border-color)] overflow-hidden">
               {members.map(member => {
-                const memberIsAdmin = group.admins.includes(member.uid);
+                const memberIsAdmin = (group.admins || []).includes(member.uid);
                 const isMe = member.uid === auth.currentUser?.uid;
                 return (
                   <div key={member.uid} className="flex items-center gap-3 p-4">

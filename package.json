@@ -3,15 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.5.0",
   "scripts": {
     "dev": "tsx src/server/server.ts",
     "build": "vite build",
+    "build:cloudflare": "npm run build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.46.0",
+    "@supabase/supabase-js": "^2.105.4",
     "axios": "^1.14.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -27,8 +33,8 @@
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "multer": "^2.1.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-error-boundary": "^6.1.1",
     "react-player": "^3.4.0",
     "react-router-dom": "^7.13.1",

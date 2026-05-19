@@ -42,13 +42,13 @@ export default function VideoPostCard({ video, currentUserData, isActive, onComm
   const isOwner = auth.currentUser?.uid === video.userId;
 
   useEffect(() => {
-    if (auth.currentUser && video.likedBy) {
+    if (auth.currentUser && Array.isArray(video.likedBy)) {
       setIsLiked(video.likedBy.includes(auth.currentUser.uid));
     }
-    if (currentUserData?.savedVideos) {
+    if (Array.isArray(currentUserData?.savedVideos)) {
       setIsSaved(currentUserData.savedVideos.includes(video.id));
     }
-    if (currentUserData?.following && video.userId) {
+    if (Array.isArray(currentUserData?.following) && video.userId) {
       setIsFollowing(currentUserData.following.includes(video.userId));
     }
   }, [video, currentUserData]);

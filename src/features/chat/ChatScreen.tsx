@@ -89,7 +89,13 @@ export default function ChatScreen() {
   useEffect(() => {
     if (chatId) {
       console.log(`🔥 [AUTO-CLEANUP] Initializing cleanup for chat: ${chatId}`);
-      cleanupMessages(chatId).catch(err => console.error("Auto-cleanup on mount failed:", err));
+      try {
+        cleanupMessages(chatId).catch(err => {
+          console.warn("Auto-cleanup on mount promise rejected:", err);
+        });
+      } catch (err) {
+        console.warn("Auto-cleanup on mount synchronous error:", err);
+      }
     }
   }, [chatId, cleanupMessages]);
 
@@ -155,10 +161,12 @@ export default function ChatScreen() {
 
     const newPreviewUrls = [...filePreviewUrls];
     for (const file of files) {
-      if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+      // Create a local URL for all file types for instant preview
+      try {
         const url = URL.createObjectURL(file);
         newPreviewUrls.push(url);
-      } else {
+      } catch (err) {
+        console.warn("Could not create local URL for file:", file.name, err);
         newPreviewUrls.push('');
       }
     }
@@ -224,7 +232,11 @@ export default function ChatScreen() {
     setActiveMessageMenu(msg);
     setShowReactionPicker(null);
     
-    if (window.navigator.vibrate) window.navigator.vibrate(5);
+    try {
+      if (window.navigator?.vibrate) window.navigator.vibrate(5);
+    } catch (e) {
+      // Ignore vibration errors
+    }
   }, []);
 
   const startEdit = useCallback((msg: any) => {

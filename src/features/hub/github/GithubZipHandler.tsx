@@ -8,6 +8,8 @@ import GithubHeader from './GithubHeader.tsx';
 interface Props {
   repo: GithubRepo;
   token: string;
+  isSequential: boolean;
+  setIsSequential: (val: boolean) => void;
   onBack: () => void;
 }
 
@@ -18,12 +20,26 @@ interface FileToUpload {
   error?: string;
 }
 
-export default function GithubZipHandler({ repo, token, onBack }: Props) {
+export default function GithubZipHandler({ repo, token, isSequential, setIsSequential, onBack }: Props) {
   const [files, setFiles] = useState<FileToUpload[]>([]);
   const [isUnzipping, setIsUnzipping] = useState(false);
   const [isPushing, setIsPushing] = useState(false);
   const [pushProgress, setPushProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to uploading file
+  React.useEffect(() => {
+    if (isPushing && isSequential) {
+      const uploadingIdx = files.findIndex(f => f.status === 'uploading');
+      if (uploadingIdx !== -1 && listRef.current) {
+        const element = listRef.current.children[uploadingIdx] as HTMLElement;
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }
+    }
+  }, [files, isPushing, isSequential]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,49 +82,84 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
     if (files.length === 0) return;
     setIsPushing(true);
     setPushProgress(0);
+    setSyncResult(null);
 
     const updatedFiles = [...files];
     
     try {
-      // Mark all as uploading
-      updatedFiles.forEach(f => f.status = 'uploading');
-      setFiles([...updatedFiles]);
+      if (isSequential) {
+        // One-by-one mode (Creates multiple commits)
+        let successCount = 0;
+        for (let i = 0; i < files.length; i++) {
+          updatedFiles[i].status = 'uploading';
+          setFiles([...updatedFiles]);
 
-      // Prepare files for batch push
-      const filesToPush = files.map(f => ({
-        path: f.path,
-        content: f.content
-      }));
+          try {
+            await githubApi.pushFile(
+              token,
+              repo.owner.login,
+              repo.name,
+              files[i].path,
+              files[i].content,
+              `Update ${files[i].path} via GrixChat`
+            );
+            updatedFiles[i].status = 'success';
+            successCount++;
+          } catch (err: any) {
+            console.error(`Failed to push ${files[i].path}:`, err);
+            updatedFiles[i].status = 'error';
+            updatedFiles[i].error = err.response?.data?.message || err.message;
+          }
 
-      const result = await githubApi.pushFilesBatch(
-        token,
-        repo.owner.login,
-        repo.name,
-        filesToPush,
-        `Smart Sync via GrixChat: ${files.length} files processed`
-      );
+          setPushProgress(Math.round(((i + 1) / files.length) * 100));
+          // Wait 1 second between files to prevent aggressive rate limits
+          await new Promise(r => setTimeout(r, 1000));
+        }
 
-      if (result.noChanges) {
-        setSyncResult({ success: true, message: "Sync complete: All files were already up to date!" });
-        updatedFiles.forEach(f => f.status = 'success');
-      } else {
-        // Mark all as success
-        updatedFiles.forEach(f => {
-          f.status = 'success';
-          f.error = undefined;
+        setSyncResult({ 
+          success: successCount > 0, 
+          message: `Sequential sync complete. Successfully pushed ${successCount} of ${files.length} files.` 
         });
-        setPushProgress(100);
-        setSyncResult({ success: true, message: `Successfully updated ${result.tree?.length || 'changed'} files on GitHub!` });
+      } else {
+        // Atomic batch mode
+        updatedFiles.forEach(f => f.status = 'uploading');
+        setFiles([...updatedFiles]);
+
+        const filesToPush = files.map(f => ({
+          path: f.path,
+          content: f.content
+        }));
+
+        const result = await githubApi.pushFilesBatch(
+          token,
+          repo.owner.login,
+          repo.name,
+          filesToPush,
+          `Smart Sync via GrixChat: ${files.length} files processed`
+        );
+
+        if (result.noChanges) {
+          setSyncResult({ success: true, message: "Sync complete: All files were already up to date!" });
+          updatedFiles.forEach(f => f.status = 'success');
+        } else {
+          updatedFiles.forEach(f => {
+            f.status = 'success';
+            f.error = undefined;
+          });
+          setPushProgress(100);
+          setSyncResult({ success: true, message: `Successfully updated ${result.tree?.length || 'changed'} files on GitHub!` });
+        }
       }
     } catch (error: any) {
-      console.error(`Batch push failed:`, error);
+      console.error(`Push failed:`, error);
       const errorMessage = error.response?.data?.message || error.message || "Unknown error";
-      // Mark all as error
       updatedFiles.forEach(f => {
-        f.status = 'error';
-        f.error = errorMessage;
+        if (f.status === 'uploading') {
+          f.status = 'error';
+          f.error = errorMessage;
+        }
       });
-      setSyncResult({ success: false, message: `Failed: ${errorMessage}` });
+      setSyncResult({ success: false, message: `Push failed: ${errorMessage}` });
     } finally {
       setFiles([...updatedFiles]);
       setIsPushing(false);
@@ -174,7 +225,10 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
             </div>
 
             {/* File List */}
-            <div className="flex-1 overflow-y-auto space-y-2 no-scrollbar mb-4">
+            <div 
+              ref={listRef}
+              className="flex-1 overflow-y-auto space-y-2 no-scrollbar mb-4"
+            >
               {files.map((file, idx) => (
                 <div key={idx} className="bg-[var(--bg-card)] p-3 rounded-xl border border-[var(--border-color)] flex items-center gap-3">
                   <File size={16} className="text-[var(--text-secondary)] shrink-0" />
@@ -188,6 +242,24 @@ export default function GithubZipHandler({ repo, token, onBack }: Props) {
 
             {/* Action Bar */}
             <div className="bg-[var(--bg-card)] p-4 rounded-2xl border border-[var(--border-color)] shadow-lg">
+              {!isPushing && !syncResult && (
+                <div className="flex items-center justify-between mb-4 px-1">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Bulk Mode (Sequential)</span>
+                    <span className="text-[10px] text-[var(--text-secondary)]">Slower but handles rate limits better</span>
+                  </div>
+                  <button 
+                    onClick={() => setIsSequential(!isSequential)}
+                    className={`w-12 h-6 rounded-full p-1 transition-all ${isSequential ? 'bg-orange-500' : 'bg-zinc-700'}`}
+                  >
+                    <motion.div 
+                      className="w-4 h-4 bg-white rounded-full"
+                      animate={{ x: isSequential ? 24 : 0 }}
+                    />
+                  </button>
+                </div>
+              )}
+              
               {isPushing ? (
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs font-bold">

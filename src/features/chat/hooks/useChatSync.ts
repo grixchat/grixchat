@@ -34,7 +34,7 @@ export function useChatSync(receiverId: string | undefined, chatId: string, conv
           setReceiver(data);
           CacheService.saveUser(receiverId, data);
         }
-      });
+      }, (err) => console.error("Receiver sync error:", err));
 
       const statusRef = rtdbRef(rtdb, `/status/${receiverId}`);
       const statusUnsubscribe = onValue(statusRef, (snapshot) => {
@@ -74,13 +74,13 @@ export function useChatSync(receiverId: string | undefined, chatId: string, conv
       } else {
         setChatSettings(null);
       }
-    });
+    }, (err) => console.error("Settings sync error:", err));
 
     const userUnsubscribe = onSnapshot(doc(db, "users", auth.currentUser.uid), (snap) => {
       if (snap.exists()) {
         setCurrentUserData(snap.data());
       }
-    });
+    }, (err) => console.error("Current user sync error:", err));
 
     if (auth.currentUser) {
       const myStatusRef = rtdbRef(rtdb, `/status/${auth.currentUser.uid}`);

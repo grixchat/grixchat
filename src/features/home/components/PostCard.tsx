@@ -60,13 +60,13 @@ export default function PostCard({ post, currentUserData, onCommentClick }: Post
   };
 
   useEffect(() => {
-    if (auth.currentUser && post.likedBy) {
+    if (auth.currentUser && Array.isArray(post.likedBy)) {
       setIsLiked(post.likedBy.includes(auth.currentUser.uid));
     }
-    if (currentUserData?.savedPosts) {
+    if (Array.isArray(currentUserData?.savedPosts)) {
       setIsSaved(currentUserData.savedPosts.includes(post.id));
     }
-    if (currentUserData?.following && post.userId) {
+    if (Array.isArray(currentUserData?.following) && post.userId) {
       setIsFollowing(currentUserData.following.includes(post.userId));
     }
   }, [post, currentUserData]);

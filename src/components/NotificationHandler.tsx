@@ -74,7 +74,19 @@ export default function NotificationHandler() {
 
         await navigator.serviceWorker.ready;
 
-        const permission = await Notification.requestPermission();
+        let permission = 'default';
+        try {
+          // Some browsers (like iframes or older browsers) might throw errors here
+          if (typeof Notification.requestPermission === 'function') {
+            permission = await Notification.requestPermission();
+          } else {
+            console.warn('Notification.requestPermission is not a function');
+          }
+        } catch (requestError) {
+          console.warn('Error requesting notification permission:', requestError);
+          permission = 'denied';
+        }
+        
         console.log('Notification permission status:', permission);
         
         if (permission === 'granted') {

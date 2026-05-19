@@ -26,6 +26,9 @@ export const useTypingStatus = (chatId: string, receiverId: string) => {
       } else {
         setIsOtherTyping(false);
       }
+    }, (err) => {
+      console.error("Typing status sync error:", err);
+      setIsOtherTyping(false);
     });
 
     return () => unsubscribe();

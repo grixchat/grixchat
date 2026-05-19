@@ -267,23 +267,37 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 )}
               </div>
             )}
-            {(msg.fileUrl || msg.localUrl) && msg.type !== 'video' && msg.type !== 'audio' && msg.type !== 'image' && (
-              <div className="mb-1 p-2 rounded-lg bg-black/5 border border-black/10 flex items-center gap-3 relative">
-                <div className={`w-10 h-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)] ${msg.isUploading ? 'animate-pulse' : ''}`}>
-                  <FileIcon size={20} />
+            {(msg.fileUrl || msg.localUrl) && msg.type === 'file' && (
+              <div className="mb-2 p-3 rounded-2xl bg-black/10 backdrop-blur-sm border border-white/10 flex items-center gap-4 relative overflow-hidden group/file">
+                <div className={`w-12 h-12 rounded-xl bg-[var(--primary)] flex items-center justify-center text-white shadow-lg ${msg.isUploading ? 'animate-pulse' : ''}`}>
+                  <FileIcon size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold truncate text-[var(--text-primary)]">{msg.fileName || 'File'}</p>
-                  <p className="text-[10px] text-red-500 uppercase font-black tracking-tighter flex items-center gap-1">
-                    <ShieldAlert size={10} /> One-Time Download
+                  <p className="text-[14px] font-bold truncate text-white leading-tight">
+                    {msg.fileName || 'Document File'}
+                  </p>
+                  <p className="text-[10px] text-white/60 font-medium tracking-wide uppercase mt-0.5">
+                    {msg.isUploading ? `Uploading ${msg.uploadProgress}%` : (msg.fileName?.split('.').pop()?.toUpperCase() || 'FILE')}
                   </p>
                 </div>
                 {!msg.isUploading ? (
-                  <a href={msg.fileUrl || msg.localUrl} download={msg.fileName} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-black/5 rounded-full text-[var(--primary)]">
-                    <Download size={18} />
+                  <a 
+                    href={msg.fileUrl || msg.localUrl} 
+                    download={msg.fileName} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all backdrop-blur-md active:scale-90"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download size={20} />
                   </a>
                 ) : (
-                  <div className="p-1 text-[10px] font-bold text-[var(--primary)]">{msg.uploadProgress}%</div>
+                  <div className="relative w-8 h-8 flex items-center justify-center">
+                    <svg className="w-full h-full -rotate-90">
+                      <circle cx="16" cy="16" r="14" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-white/20" />
+                      <circle cx="16" cy="16" r="14" fill="transparent" stroke="currentColor" strokeWidth="2" className="text-white transition-all duration-300" strokeDasharray={2 * Math.PI * 14} strokeDashoffset={2 * Math.PI * 14 * (1 - (msg.uploadProgress || 0) / 100)} />
+                    </svg>
+                  </div>
                 )}
               </div>
             )}
