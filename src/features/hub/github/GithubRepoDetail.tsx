@@ -8,12 +8,10 @@ import GithubHeader from './GithubHeader.tsx';
 interface Props {
   repo: GithubRepo;
   token: string;
-  isSequential: boolean;
-  setIsSequential: (val: boolean) => void;
   onBack: () => void;
 }
 
-export default function GithubRepoDetail({ repo, token, isSequential, setIsSequential, onBack }: Props) {
+export default function GithubRepoDetail({ repo, token, onBack }: Props) {
   const [view, setView] = useState<'options' | 'zip'>('options');
 
   if (view === 'zip') {
@@ -21,8 +19,6 @@ export default function GithubRepoDetail({ repo, token, isSequential, setIsSeque
       <GithubZipHandler 
         repo={repo} 
         token={token} 
-        isSequential={isSequential}
-        setIsSequential={setIsSequential}
         onBack={() => setView('options')} 
       />
     );

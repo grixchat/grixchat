@@ -33,8 +33,8 @@ export const getSupabase = () => {
       supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
           persistSession: isLocalStorageAvailable(), // Only persist if storage is available
-          autoRefreshToken: false,
-          detectSessionInUrl: false
+          autoRefreshToken: true,
+          detectSessionInUrl: true
         }
       });
     } catch (error) {
@@ -46,4 +46,4 @@ export const getSupabase = () => {
 };
 
 // Export a default initialized client (may be null if env vars are missing or if it fails)
-export const supabase = getSupabase();
+export const supabase = getSupabase() as any;

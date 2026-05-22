@@ -1,5 +1,4 @@
 import React from 'react';
-import { auth } from '../../services/firebase.ts';
 import { useSearch } from '../../contexts/SearchContext.tsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { MessageCircle, Phone, Video, ArrowUpRight, ArrowDownLeft, PhoneMissed, Info, Lock, Users } from 'lucide-react';
@@ -46,7 +45,7 @@ export default function ChatsTab() {
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-card)] overflow-hidden">
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
         {/* User List (Chats or Calls) */}
         <div className="flex flex-col h-full">
           {loading ? (

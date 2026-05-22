@@ -61,17 +61,15 @@ export const SupabaseStorageService = {
   /**
    * Specifically for images
    */
-  uploadImage: async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
-    // Note: implementing true progress with Supabase JS SDK is tricky without custom fetch
-    // for now we use the general uploadFile
-    return SupabaseStorageService.uploadFile(file, 'chat-media', 'images');
+  uploadImage: async (file: File, onProgress?: (progress: number) => void, bucket: string = 'chat-media'): Promise<string> => {
+    return SupabaseStorageService.uploadFile(file, bucket, 'images');
   },
 
   /**
    * Specifically for videos
    */
-  uploadVideo: async (file: File, onProgress?: (progress: number) => void): Promise<string> => {
-    return SupabaseStorageService.uploadFile(file, 'chat-media', 'videos');
+  uploadVideo: async (file: File, onProgress?: (progress: number) => void, bucket: string = 'chat-media'): Promise<string> => {
+    return SupabaseStorageService.uploadFile(file, bucket, 'videos');
   },
 
   /**
