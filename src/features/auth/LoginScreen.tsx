@@ -10,6 +10,7 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // Can be email or username
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -45,7 +46,7 @@ export default function LoginScreen() {
       }
 
       await authService.login(loginEmail, password);
-      navigate('/');
+      navigate('/chats');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -136,13 +137,26 @@ export default function LoginScreen() {
           </div>
 
           <div className="flex justify-between items-center px-1">
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="w-4 h-4 rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)] accent-[var(--primary)] bg-[var(--bg-card)]" 
-              />
-              <label htmlFor="remember" className="text-[11px] font-medium text-[var(--text-secondary)] cursor-pointer">Remember me</label>
+            <div 
+              onClick={() => setRememberMe(!rememberMe)}
+              className="flex items-center gap-2 cursor-pointer group select-none"
+            >
+              <div 
+                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                  rememberMe 
+                    ? 'bg-[var(--primary)] border-[var(--primary)]' 
+                    : 'bg-[var(--bg-card)] border-[var(--border-color)] group-hover:border-[var(--text-secondary)]/50'
+                }`}
+              >
+                {rememberMe && (
+                  <svg className="w-2.5 h-2.5 text-white stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-[11px] font-medium text-[var(--text-secondary)] cursor-pointer group-hover:text-[var(--text-primary)] transition-colors">
+                Remember me
+              </span>
             </div>
             <Link to="/forgot-password" title="Forgot password?" className="text-[11px] font-bold text-[var(--primary)] hover:underline">Forgot Password</Link>
           </div>

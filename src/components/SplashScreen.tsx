@@ -14,12 +14,13 @@ export default function SplashScreen({ }: SplashScreenProps) {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-20 h-20 flex items-center justify-center"
+          className="w-16 h-16 bg-[var(--bg-card)] rounded-[20px] shadow-sm flex items-center justify-center border border-[var(--border-color)] p-0 overflow-hidden"
         >
           <img 
-            src={APP_CONFIG.LOGO_URL} 
-            alt={APP_CONFIG.NAME} 
-            className="w-full h-full object-contain"
+            src="/assets/icon-512-maskable.png" 
+            alt="Logo" 
+            className="w-full h-full object-cover scale-110"
+            referrerPolicy="no-referrer"
           />
         </motion.div>
         <motion.span 

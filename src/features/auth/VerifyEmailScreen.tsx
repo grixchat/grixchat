@@ -26,7 +26,7 @@ export default function VerifyEmailScreen() {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (currentUser && currentUser.email_confirmed_at) {
           clearInterval(checkVerification);
-          navigate('/');
+          navigate('/chats');
         }
       }
     }, 4000);
@@ -93,7 +93,7 @@ export default function VerifyEmailScreen() {
 
         setMessage('Email verified successfully! Redirecting...');
         setTimeout(() => {
-          navigate('/');
+          navigate('/chats');
         }, 1500);
       }
     } catch (err: any) {

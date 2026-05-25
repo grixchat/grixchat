@@ -21,6 +21,7 @@ import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import { authService } from '../auth/services/authService.ts';
+import { truncateToChars } from '../../utils/bioHelper';
 
 export default function ProfileTab() {
   const { user: authUser, userData: authUserData } = useAuth();
@@ -132,7 +133,7 @@ export default function ProfileTab() {
                 Bio & status
               </span>
               <p className="text-xs text-[var(--text-primary)] leading-relaxed break-words whitespace-pre-line">
-                {userData?.bio || 'Tap to describe yourself & write a custom bio.'}
+                {userData?.bio ? truncateToChars(userData.bio) : 'Tap to describe yourself & write a custom bio.'}
               </p>
             </div>
           </div>
@@ -174,7 +175,7 @@ export default function ProfileTab() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[14px] font-medium text-[var(--text-primary)] leading-normal break-words whitespace-pre-line">
-                {userData?.bio || 'No bio described yet. Tap to set up a short description.'}
+                {userData?.bio ? truncateToChars(userData.bio) : 'No bio described yet. Tap to set up a short description.'}
               </div>
               <div className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Bio & current status</div>
             </div>
@@ -233,7 +234,6 @@ export default function ProfileTab() {
         {/* Unified Branding Footer */}
         <div className="py-8 flex flex-col items-center gap-1 opacity-35 text-center">
           <span className="text-[var(--text-primary)] font-black tracking-[0.15em] uppercase text-[10px]">GrixChat</span>
-          <span className="text-[var(--text-secondary)] text-[9px] uppercase tracking-wider font-semibold">Made In India</span>
         </div>
       </div>
     </div>
