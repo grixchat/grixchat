@@ -31,18 +31,29 @@ export default function LoginScreen() {
       if (identifier.includes('@')) {
         loginEmail = identifier;
       } else {
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select('email')
-          .eq('username', identifier.toLowerCase().trim())
-          .maybeSingle();
+        const cleanId = identifier.trim();
+        let matchedUser = null;
         
-        if (fetchError) throw fetchError;
-        if (!data) {
+        // Try matching by username first (always exists and safe)
+        try {
+          const { data, error: uError } = await supabase
+            .from('users')
+            .select('email')
+            .eq('username', cleanId.toLowerCase())
+            .maybeSingle();
+            
+          if (!uError && data) {
+            matchedUser = data;
+          }
+        } catch (uErr) {
+          console.error("Username query fallback error", uErr);
+        }
+        
+        if (!matchedUser) {
           throw new Error("Username not found");
         }
         
-        loginEmail = data.email;
+        loginEmail = matchedUser.email;
       }
 
       await authService.login(loginEmail, password);
@@ -109,7 +120,7 @@ export default function LoginScreen() {
             <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] group-focus-within:text-[var(--primary)] transition-colors" />
             <input 
               type="text" 
-              placeholder="Enter your email or username"
+              placeholder="Enter email or username"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full pl-12 pr-5 py-4 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)]/40 transition-all placeholder:text-[var(--text-secondary)]/50 text-[var(--text-primary)]"

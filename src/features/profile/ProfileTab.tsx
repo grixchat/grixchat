@@ -11,11 +11,11 @@ import {
   VolumeX,
   Lock,
   UserMinus,
-  Smartphone,
   HelpCircle,
   LogOut,
   Check,
-  Copy
+  Copy,
+  MessageSquare
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -62,7 +62,7 @@ export default function ProfileTab() {
       title: 'Grix Settings & Sounds',
       items: [
         { icon: Bell, label: 'Notifications & Sounds', sub: 'Ringtones, Vibrations & Alerts', color: 'bg-amber-500/10 text-amber-500', onClick: () => navigate('/notifications-settings') },
-        { icon: Smartphone, label: 'Chat Settings', sub: 'Archived, Hidden chats, Wallpaper & Theme', color: 'bg-purple-500/10 text-purple-500', onClick: () => navigate('/chat-settings') },
+        { icon: MessageSquare, label: 'Chat Settings', sub: 'Archived, Hidden chats, Wallpaper & Theme', color: 'bg-purple-500/10 text-purple-500', onClick: () => navigate('/chat-settings') },
         { icon: Clock, label: 'Usage Stats & Time', sub: 'Daily usage log tracker', color: 'bg-teal-500/10 text-teal-500', onClick: () => navigate('/time-spent') },
       ]
     },
@@ -163,23 +163,6 @@ export default function ProfileTab() {
             <div className="opacity-0 group-hover:opacity-40 transition-opacity">
               {copiedField === 'username' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
             </div>
-          </div>
-
-          {/* Biography item */}
-          <div 
-            onClick={() => navigate('/edit-profile')}
-            className="flex items-center gap-4 px-5 py-3.5 hover:bg-[var(--bg-main)]/35 active:bg-[var(--bg-main)]/50 transition-colors cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-              <InfoIcon size={18} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[14px] font-medium text-[var(--text-primary)] leading-normal break-words whitespace-pre-line">
-                {userData?.bio ? truncateToChars(userData.bio) : 'No bio described yet. Tap to set up a short description.'}
-              </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Bio & current status</div>
-            </div>
-            <ChevronRight size={18} className="text-[var(--text-secondary)] opacity-20 group-hover:opacity-45 transition-opacity" />
           </div>
         </div>
       </div>

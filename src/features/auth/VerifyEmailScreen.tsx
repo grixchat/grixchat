@@ -104,7 +104,7 @@ export default function VerifyEmailScreen() {
   };
 
   const handleResend = async () => {
-    if (!user || (!user.email && !user.phone)) return;
+    if (!user || !user.email) return;
     setLoading(true);
     setError('');
     setMessage('');

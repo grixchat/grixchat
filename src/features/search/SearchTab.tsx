@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider.tsx';
-import { Search, X, Loader2, MessageSquare, Plus, Check } from 'lucide-react';
+import { Search, X, Loader2, MessageSquare, Plus, Check, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConversations } from '../chat/hooks/useConversations';
 import { getAcceptedChats } from '../../utils/acceptedChats';
@@ -172,6 +172,34 @@ export default function SearchTab() {
                     ? `You have ${requestCount} pending chat request${requestCount > 1 ? 's' : ''}` 
                     : "No new requests from people you don't know"
                   }
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 2.6 FRIENDS SUB-MENU (Direct, native-inspired entries) */}
+        {!searchTerm && (
+          <div className="bg-[var(--bg-card)] border-b border-[var(--border-color)]/20 select-none">
+            {/* Friends Option */}
+            <div 
+              onClick={() => navigate('/search/friends')}
+              className="flex items-center gap-[15px] px-5 py-4 hover:bg-[var(--bg-main)] dark:hover:bg-zinc-800/30 transition-all active:scale-[0.98] group cursor-pointer"
+            >
+              <div className="w-[52px] h-[52px] rounded-full bg-emerald-500/10 dark:bg-zinc-800 flex items-center justify-center text-emerald-500 group-hover:scale-105 transition-transform border border-[var(--border-color)]/35">
+                <Users size={21} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0 pb-1">
+                <div className="flex justify-between items-baseline mb-0.5">
+                  <h3 className="text-[15px] truncate font-black text-[var(--text-primary)]">
+                    Friends
+                  </h3>
+                  <span className="text-[11px] whitespace-nowrap text-emerald-500 font-bold tracking-tight">
+                    Open
+                  </span>
+                </div>
+                <p className="text-xs truncate text-[var(--text-secondary)] font-medium">
+                  Connect with people you chat with on Grix
                 </p>
               </div>
             </div>
