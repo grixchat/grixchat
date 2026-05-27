@@ -51,12 +51,6 @@ To minimize Firestore reads and improve performance, we are implementing:
    ```bash
    npm install
    ```
-
-2. **Environment Setup**:
-   Copy `.env.example` to `.env` and fill in your Firebase configuration.
-
-3. **Run Development Server**:
-   ```bash
    npm run dev
    ```
 
