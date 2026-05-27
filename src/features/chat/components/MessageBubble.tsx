@@ -185,7 +185,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             />
           )}
 
-          {msg.reply_to && (
+          {msg.reply_to && typeof msg.reply_to === 'object' && !Array.isArray(msg.reply_to) && msg.reply_to.id && (
             <motion.div 
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {

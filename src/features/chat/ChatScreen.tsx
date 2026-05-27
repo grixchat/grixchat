@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider.tsx';
@@ -60,6 +60,11 @@ export default function ChatScreen() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const lastMessageIdRef = useRef<string | null>(null);
+  const firstMessageIdRef = useRef<string | null>(null);
+  const scrollHeightRef = useRef<number>(0);
+  const scrollTopRef = useRef<number>(0);
 
   const { 
     receiver,
@@ -127,19 +132,63 @@ export default function ChatScreen() {
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    if (target.scrollTop === 0) {
+    scrollHeightRef.current = target.scrollHeight;
+    scrollTopRef.current = target.scrollTop;
+
+    if (target.scrollTop === 0 && !loadingMore && !loading && messages.length >= 15) {
       loadMore();
     }
   };
 
-  useEffect(() => {
-    if (messages.length > lastMessageCount.current) {
-      const lastMsg = messages[messages.length - 1];
+  useLayoutEffect(() => {
+    if (loading || messages.length === 0) {
+      lastMessageIdRef.current = null;
+      firstMessageIdRef.current = null;
+      lastMessageCount.current = 0;
+      return;
+    }
+
+    const firstMsg = messages[0];
+    const lastMsg = messages[messages.length - 1];
+    const container = scrollContainerRef.current;
+
+    // Check if this is the very first load of this conversation
+    if (!lastMessageIdRef.current) {
+      scrollToBottom('auto');
+      lastMessageCount.current = messages.length;
+      lastMessageIdRef.current = lastMsg?.id || null;
+      firstMessageIdRef.current = firstMsg?.id || null;
+      if (container) {
+        scrollHeightRef.current = container.scrollHeight;
+        scrollTopRef.current = container.scrollTop;
+      }
+      return;
+    }
+
+    // Checking if older messages were loaded / prepended (pagination)
+    if (firstMsg?.id !== firstMessageIdRef.current && lastMsg?.id === lastMessageIdRef.current) {
+      if (container && scrollHeightRef.current > 0) {
+        const heightDiff = container.scrollHeight - scrollHeightRef.current;
+        if (heightDiff > 0) {
+          container.scrollTop = scrollTopRef.current + heightDiff;
+        }
+      }
+    } 
+    // Checking if a new message was added at the bottom
+    else if (lastMsg?.id !== lastMessageIdRef.current) {
       const isFromMe = lastMsg?.sender_id === user?.id;
       scrollToBottom(isFromMe ? 'smooth' : 'auto');
-      lastMessageCount.current = messages.length;
     }
-  }, [messages, scrollToBottom, user?.id]);
+
+    lastMessageCount.current = messages.length;
+    lastMessageIdRef.current = lastMsg?.id || null;
+    firstMessageIdRef.current = firstMsg?.id || null;
+
+    if (container) {
+      scrollHeightRef.current = container.scrollHeight;
+      scrollTopRef.current = container.scrollTop;
+    }
+  }, [messages, loading, user?.id, scrollToBottom, loadingMore]);
 
   useEffect(() => {
     if (isOtherTyping) setTimeout(() => scrollToBottom('smooth'), 100);

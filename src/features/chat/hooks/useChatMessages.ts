@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../providers/AuthProvider.tsx';
 import { LocalDataCache } from '../../../services/LocalDataCache';
 
-export const useChatMessages = (conversationId: string, initialLimit: number = 30) => {
+export const useChatMessages = (conversationId: string, initialLimit: number = 15) => {
   const [messages, setMessages] = useState<any[]>(() => {
     if (conversationId) {
       const cached = LocalDataCache.getMessages(conversationId);
@@ -85,7 +85,7 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 3
           full_name,
           photo_url
         ),
-        reply_to:messages!reply_to (
+        reply_to:reply_to (
           id,
           text,
           sender_id
@@ -129,7 +129,8 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 3
   }, [conversationId, initialLimit]);
 
   useEffect(() => {
-    fetchMessages();
+    const isMore = messageLimit > initialLimit;
+    fetchMessages(isMore);
 
     if (!conversationId || !supabase || !user) return;
 
@@ -184,7 +185,7 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 3
                 full_name,
                 photo_url
               ),
-              reply_to:messages!reply_to (
+              reply_to:reply_to (
                 id,
                 text,
                 sender_id
@@ -237,7 +238,7 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 3
               full_name,
               photo_url
             ),
-            reply_to:messages!reply_to (
+            reply_to:reply_to (
               id,
               text,
               sender_id
@@ -281,8 +282,9 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 3
   }, [conversationId, user?.id, fetchMessages]);
 
   const loadMore = useCallback(() => {
-    setMessageLimit(prev => prev + 20);
-  }, []);
+    if (loading || loadingMore) return;
+    setMessageLimit(prev => prev + 15);
+  }, [loading, loadingMore]);
 
   // Sync messages update with Local Cache
   useEffect(() => {
