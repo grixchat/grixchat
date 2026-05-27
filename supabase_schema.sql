@@ -92,6 +92,7 @@ CREATE TABLE public.messages (
     reply_to UUID REFERENCES public.messages(id) ON DELETE SET NULL,
     reactions JSONB DEFAULT '{}'::jsonb,
     is_read BOOLEAN DEFAULT FALSE,
+    is_edited BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

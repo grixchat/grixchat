@@ -84,19 +84,67 @@ export const useChatActions = (conversationId: string, receiverId: string) => {
     if (user?.id) {
       LocalDataCache.updateLastMessage(user.id, conversationId, newText);
     }
-    await supabase
-      .from('messages')
-      .update({ text: newText } as any)
-      .eq('id', msgId);
+
+    // Instantly/optimistically update local messages cache and notify listeners
+    const cached = LocalDataCache.getMessages(conversationId) || [];
+    const updated = cached.map((m: any) => {
+      if (m.id === msgId) {
+        return {
+          ...m,
+          text: newText,
+          content: newText,
+          is_edited: true
+        };
+      }
+      return m;
+    });
+    LocalDataCache.saveMessages(conversationId, updated);
+    LocalDataCache.notify(`messages:${conversationId}`, updated);
+
+    try {
+      // First try to update both text and is_edited
+      const { error } = await supabase
+        .from('messages')
+        .update({ text: newText, is_edited: true } as any)
+        .eq('id', msgId);
+      
+      if (error) {
+        console.warn('Error updating message with is_edited column (falling back to text-only):', error);
+        // Fallback to text-only if SQL column doesn't exist yet
+        const { error: fallbackError } = await supabase
+          .from('messages')
+          .update({ text: newText } as any)
+          .eq('id', msgId);
+        if (fallbackError) {
+          console.error('Failed to edit message in fallback mode:', fallbackError);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update message:', err);
+    }
   }, [conversationId, user]);
 
   const deleteMessage = useCallback(async (msgId: string) => {
     if (!supabase) return;
-    await supabase
-      .from('messages')
-      .delete()
-      .eq('id', msgId);
-  }, []);
+
+    // Instantly/optimistically update local messages cache and notify listeners
+    const cached = LocalDataCache.getMessages(conversationId) || [];
+    const updated = cached.filter((m: any) => m.id !== msgId);
+    LocalDataCache.saveMessages(conversationId, updated);
+    LocalDataCache.notify(`messages:${conversationId}`, updated);
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', msgId);
+      if (error) {
+        console.error('Error deleting message in Supabase:', error);
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+    }
+  }, [conversationId]);
 
   const reactToMessage = useCallback(async (msgId: string, emoji: string) => {
     // Reaction logic could use a separate table in Supabase for better scalability

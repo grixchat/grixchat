@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../providers/AuthProvider.tsx';
-import { toDate } from '../../../utils/dateUtils.ts';
+import { toDate, formatTime } from '../../../utils/dateUtils.ts';
 import { 
   ChatMessageReactions,
   VoiceMessage
@@ -266,12 +266,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             )}
             
-            {msg.content && <p className="text-[14.5px] leading-snug break-all whitespace-pre-wrap overflow-hidden">{msg.content}</p>}
+            {msg.content && <p className="text-[14.5px] leading-snug break-words whitespace-pre-wrap overflow-hidden">{msg.content}</p>}
             
             <div className="flex items-center justify-end gap-1 mt-0.5 -mr-1">
               <span className="text-[10px] text-zinc-500 font-medium">
-                {toDate(msg.created_at)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) || ''}
-                {msg.is_edited && ' • edited'}
+                {formatTime(msg.created_at)}
+                {msg.is_edited && ' • Edited'}
               </span>
             </div>
           </div>
