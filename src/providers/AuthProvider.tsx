@@ -31,11 +31,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfileData = async (currentUserId: string, isSubscribed: boolean) => {
     if (!supabase) return;
     try {
-      const { data: profile } = await supabase
+      let { data: profile, error: fetchError } = await supabase
         .from('users')
         .select('*')
         .eq('id', currentUserId)
-        .single();
+        .maybeSingle();
+
+      if (fetchError) {
+        console.warn('Error fetching profile, trying to upsert default:', fetchError);
+      }
+
+      if (!profile) {
+        // Safe auto-creation of profile row
+        const email = user?.email || '';
+        const emailPrefix = email ? email.split('@')[0] : 'grix_user';
+        const baseUsername = emailPrefix.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 30);
+        const fullName = user?.user_metadata?.full_name || emailPrefix || 'Grix User';
+        const photoUrl = user?.user_metadata?.avatar_url || `https://cdn-icons-png.flaticon.com/512/149/149071.png`;
+
+        console.log('Inserting auto-generated profile for', currentUserId);
+        const { data: insertedProfile, error: insertError } = await supabase
+          .from('users')
+          .upsert({
+            id: currentUserId,
+            email: email,
+            full_name: fullName,
+            username: finalUsername,
+            photo_url: photoUrl,
+            updated_at: new Date().toISOString()
+          } as any)
+          .select()
+          .maybeSingle();
+
+        if (insertError) {
+          console.error('Error inserting auto-generated profile:', insertError);
+        } else if (insertedProfile) {
+          profile = insertedProfile;
+        }
+      } else if (!profile.username) {
+        // Profile exists but username is missing
+        const email = profile.email || user?.email || '';
+        const emailPrefix = email ? email.split('@')[0] : 'grix_user';
+        const baseUsername = emailPrefix.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 30);
+
+        console.log('Updating missing username for existing profile', currentUserId);
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('users')
+          .update({ username: finalUsername } as any)
+          .eq('id', currentUserId)
+          .select()
+          .maybeSingle();
+
+        if (updateError) {
+          console.error('Error updating missing username:', updateError);
+        } else if (updatedProfile) {
+          profile = updatedProfile;
+        }
+      }
 
       // Fetch following and followers
       const { data: followings } = await supabase
