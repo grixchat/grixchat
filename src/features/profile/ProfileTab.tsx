@@ -26,6 +26,27 @@ import { truncateToChars } from '../../utils/bioHelper';
 export default function ProfileTab() {
   const { user: authUser, userData: authUserData } = useAuth();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [hasActiveStories, setHasActiveStories] = useState(false);
+
+  useEffect(() => {
+    const checkMyStories = async () => {
+      if (!supabase || !authUser?.id) return;
+      try {
+        const { data } = await supabase
+          .from('stories')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .limit(1);
+        
+        if (data && data.length > 0) {
+          setHasActiveStories(true);
+        }
+      } catch (err) {
+        console.error('Error fetching user active stories on ProfileTab:', err);
+      }
+    };
+    checkMyStories();
+  }, [authUser?.id]);
   
   const navigate = useNavigate();
 
@@ -63,7 +84,6 @@ export default function ProfileTab() {
       items: [
         { icon: Bell, label: 'Notifications & Sounds', sub: 'Ringtones, Vibrations & Alerts', color: 'bg-amber-500/10 text-amber-500', onClick: () => navigate('/notifications-settings') },
         { icon: MessageSquare, label: 'Chat Settings', sub: 'Archived, Hidden chats, Wallpaper & Theme', color: 'bg-purple-500/10 text-purple-500', onClick: () => navigate('/chat-settings') },
-        { icon: Clock, label: 'Usage Stats & Time', sub: 'Daily usage log tracker', color: 'bg-teal-500/10 text-teal-500', onClick: () => navigate('/time-spent') },
       ]
     },
     {
@@ -94,9 +114,9 @@ export default function ProfileTab() {
           <div className="relative flex flex-col gap-3">
             {/* Top Row: Avatar on Left, Name and Username on Right */}
             <div className="flex items-center gap-4">
-              {/* Solid Avatar Wrapper with Edit Pencil icon overlay and custom #0494f4 ring */}
+              {/* Solid Avatar Wrapper with Edit Pencil icon overlay and custom ring depending on stories */}
               <div className="relative group shrink-0">
-                <div className="w-16 h-16 rounded-full p-[2.5px] border-[2.5px] border-[#0494f4] bg-[var(--bg-main)] flex items-center justify-center shrink-0">
+                <div className={`w-16 h-16 rounded-full p-[2.5px] border-[2.5px] bg-[var(--bg-main)] flex items-center justify-center shrink-0 ${hasActiveStories ? 'border-[#0494f4]' : 'border-black dark:border-white'}`}>
                   <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
                     <img 
                       src={profilePic || DEFAULT_LOGO} 

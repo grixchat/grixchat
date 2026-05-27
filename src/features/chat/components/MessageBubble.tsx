@@ -266,7 +266,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             )}
             
-            {msg.content && <p className="text-[14.5px] leading-snug break-words whitespace-pre-wrap overflow-hidden">{msg.content}</p>}
+            {msg.content && <p className="text-[14.5px] leading-snug break-words whitespace-pre-wrap overflow-visible [word-break:normal]">{msg.content}</p>}
             
             <div className="flex items-center justify-end gap-1 mt-0.5 -mr-1">
               <span className="text-[10px] text-zinc-500 font-medium">
@@ -289,7 +289,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </motion.div>
       </div>
       {isMe && isLatestMessage && (
-        <span className="text-[10px] text-zinc-400/80 mt-1 mr-2 px-1 font-medium select-none text-right">
+        <span className="text-[10px] text-zinc-400/80 mt-1 mr-2 px-1 font-medium select-none text-right flex items-center justify-end gap-1.5">
+          {msg.is_read && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#0494f4] inline-block shadow-[0_0_4px_#0494f4] shrink-0" />
+          )}
           {getStatusString(msg)}
         </span>
       )}

@@ -49,7 +49,6 @@ const ChatSettingsScreen = React.lazy(() => import('./features/chat/ChatSettings
 const SearchTab = React.lazy(() => import('./features/search/SearchTab'));
 const FriendsScreen = React.lazy(() => import('./features/search/FriendsScreen'));
 
-const StoryMakerScreen = React.lazy(() => import('./features/stories/StoryMakerScreen'));
 const StoryWatcherScreen = React.lazy(() => import('./features/stories/StoryWatcherScreen'));
 const NotificationsScreen = React.lazy(() => import('./features/notifications/NotificationsScreen.tsx'));
 const LikeNotificationsScreen = React.lazy(() => import('./features/notifications/LikeNotificationsScreen.tsx'));
@@ -62,7 +61,6 @@ const GrixAIProfile = React.lazy(() => import('./features/profile/GrixAIProfile'
 
 const CallsTab = React.lazy(() => import('./features/call/CallsTab'));
 const GroupsTab = React.lazy(() => import('./features/chat/GroupsTab'));
-const CameraTab = React.lazy(() => import('./features/camera/CameraTab'));
 
 const PrivacySettingsScreen = React.lazy(() => import('./features/settings/PrivacySettingsScreen'));
 const AppPreferencesScreen = React.lazy(() => import('./features/settings/AppPreferencesScreen'));
@@ -71,9 +69,10 @@ const ChatSettingsMainScreen = React.lazy(() => import('./features/settings/Chat
 const AccountSettingsScreen = React.lazy(() => import('./features/settings/AccountSettingsScreen'));
 const NotificationsSettingsScreen = React.lazy(() => import('./features/settings/NotificationsSettingsScreen'));
 const HelpScreen = React.lazy(() => import('./features/settings/HelpScreen'));
+const HelpFaqScreen = React.lazy(() => import('./features/settings/HelpFaqScreen'));
+const HelpContactScreen = React.lazy(() => import('./features/settings/HelpContactScreen'));
 const AppInfoScreen = React.lazy(() => import('./features/settings/AppInfoScreen'));
 const GithubScreen = React.lazy(() => import('./features/github/GithubScreen'));
-const TimeSpentScreen = React.lazy(() => import('./features/settings/TimeSpentScreen'));
 const FavoritesScreen = React.lazy(() => import('./features/settings/FavoritesScreen'));
 const BlockedAccountsScreen = React.lazy(() => import('./features/settings/BlockedAccountsScreen'));
 const MutedAccountsScreen = React.lazy(() => import('./features/settings/MutedAccountsScreen'));
@@ -300,11 +299,9 @@ export default function App() {
                     <Route path="/complete-profile" element={
                       user && (!userData || !userData.username) ? <CompleteProfileScreen /> : <Navigate to="/chats" replace />
                     } />
-                    <Route path="/camera" element={user ? <CameraTab /> : <Navigate to="/login" />} />
                     <Route path="/call/:id" element={user ? <CallScreen /> : <Navigate to="/login" />} />
                     <Route path="/notifications" element={user ? <NotificationsScreen /> : <Navigate to="/login" />} />
                     <Route path="/notifications/likes" element={user ? <LikeNotificationsScreen /> : <Navigate to="/login" />} />
-                    <Route path="/stories/create" element={user ? <StoryMakerScreen /> : <Navigate to="/login" />} />
                     <Route path="/stories/view/:userId" element={user ? <StoryWatcherScreen /> : <Navigate to="/login" />} />
                     <Route path="/settings" element={<Navigate to="/profile" replace />} />
                     <Route path="/edit-profile" element={user ? <EditProfileScreen /> : <Navigate to="/login" />} />
@@ -318,9 +315,10 @@ export default function App() {
                     <Route path="/notifications-settings" element={user ? <NotificationsSettingsScreen /> : <Navigate to="/login" />} />
                     <Route path="/data-usage" element={user ? <DataUsageScreen /> : <Navigate to="/login" />} />
                     <Route path="/help" element={user ? <HelpScreen /> : <Navigate to="/login" />} />
+                    <Route path="/help/faq" element={user ? <HelpFaqScreen /> : <Navigate to="/login" />} />
+                    <Route path="/help/contact" element={user ? <HelpContactScreen /> : <Navigate to="/login" />} />
                     <Route path="/app-info" element={user ? <AppInfoScreen /> : <Navigate to="/login" />} />
                     <Route path="/github" element={user ? <GithubScreen /> : <Navigate to="/login" />} />
-                    <Route path="/time-spent" element={user ? <TimeSpentScreen /> : <Navigate to="/login" />} />
                     <Route path="/favorites" element={user ? <FavoritesScreen /> : <Navigate to="/login" />} />
                     <Route path="/blocked-accounts" element={user ? <BlockedAccountsScreen /> : <Navigate to="/login" />} />
                     <Route path="/muted-accounts" element={user ? <MutedAccountsScreen /> : <Navigate to="/login" />} />

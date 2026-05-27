@@ -37,6 +37,7 @@ interface ChatUserListProps {
   emptyMessage?: string;
   emptySubMessage?: string;
   loading?: boolean;
+  usersWithStories?: string[];
 }
 
 export const ChatUserList: React.FC<ChatUserListProps> = ({
@@ -49,7 +50,8 @@ export const ChatUserList: React.FC<ChatUserListProps> = ({
   secretCount = 0,
   emptyMessage = "No messages yet",
   emptySubMessage = "Start a conversation with your friends.",
-  loading = false
+  loading = false,
+  usersWithStories = []
 }) => {
   const navigate = useNavigate();
 
@@ -62,83 +64,87 @@ export const ChatUserList: React.FC<ChatUserListProps> = ({
     );
   }
 
-  const renderChatItem = (chat: ChatItem) => (
-    <Link 
-      to={`/chat/${chat.otherUserId}`} 
-      key={chat.id} 
-      className="flex items-center gap-[15px] px-4 py-3 hover:bg-[var(--bg-main)] transition-all active:scale-[0.98] group"
-    >
-      <div className="relative shrink-0">
-        <img 
-          src={chat.avatar || `https://cdn-icons-png.flaticon.com/512/149/149071.png`} 
-          className="w-[52px] h-[52px] object-cover shadow-sm group-hover:scale-105 transition-transform rounded-full border border-[var(--border-color)]/30"
-          referrerPolicy="no-referrer"
-          alt={chat.user}
-        />
-        {chat.isOnline && (
-          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[var(--bg-card)] rounded-full shadow-sm"></div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/30 pb-3 group-last:border-0 relative">
-        <div className="flex justify-between items-baseline mb-0.5">
-          <h3 className={`text-[15px] truncate font-bold text-[var(--text-primary)] ${chat.unread ? 'font-black' : ''}`}>
-            {chat.user}
-          </h3>
-          <span className={`text-[10px] whitespace-nowrap ${chat.unread ? 'text-[var(--primary)] font-bold' : 'text-[var(--text-secondary)]'}`}>
-            {chat.time}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <p className={`text-xs truncate font-medium ${chat.unread ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)]'}`}>
-            {chat.lastMsg}
-          </p>
-          {chat.unread && (
-            <div className="min-w-[18px] h-[18px] px-1.5 bg-[var(--primary)] rounded-full flex items-center justify-center shadow-lg shadow-[var(--primary-shadow)]/20 ml-2">
-              <span className="text-[10.5px] text-white font-black leading-none">
-                {chat.unreadCount && chat.unreadCount > 4 ? '4+' : chat.unreadCount}
-              </span>
-            </div>
+  const renderChatItem = (chat: ChatItem) => {
+    return (
+      <Link 
+        to={`/chat/${chat.otherUserId}`} 
+        key={chat.id} 
+        className="flex items-center gap-[15px] px-4 py-3 hover:bg-[var(--bg-main)] transition-all active:scale-[0.98] group"
+      >
+        <div className="relative shrink-0 select-none">
+          <img 
+            src={chat.avatar || `https://cdn-icons-png.flaticon.com/512/149/149071.png`} 
+            className="w-[52px] h-[52px] object-cover rounded-full border border-[var(--border-color)]/30 shadow-sm group-hover:scale-105 transition-transform"
+            referrerPolicy="no-referrer"
+            alt={chat.user}
+          />
+          {chat.isOnline && (
+            <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[var(--bg-card)] rounded-full shadow-sm"></div>
           )}
+        </div>
+        <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/30 pb-3 group-last:border-0 relative">
+          <div className="flex justify-between items-baseline mb-0.5">
+            <h3 className={`text-[15px] truncate font-bold text-[var(--text-primary)] ${chat.unread ? 'font-black' : ''}`}>
+              {chat.user}
+            </h3>
+            <span className={`text-[10px] whitespace-nowrap ${chat.unread ? 'text-[var(--primary)] font-bold' : 'text-[var(--text-secondary)]'}`}>
+              {chat.time}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className={`text-xs truncate font-medium ${chat.unread ? 'text-[var(--text-primary)] font-bold' : 'text-[var(--text-secondary)]'}`}>
+              {chat.lastMsg}
+            </p>
+            {chat.unread && (
+              <div className="min-w-[18px] h-[18px] px-1.5 bg-[var(--primary)] rounded-full flex items-center justify-center shadow-lg shadow-[var(--primary-shadow)]/20 ml-2">
+                <span className="text-[10.5px] text-white font-black leading-none">
+                  {chat.unreadCount && chat.unreadCount > 4 ? '4+' : chat.unreadCount}
+                </span>
+              </div>
+            )}
+  
+          </div>
+        </div>
+      </Link>
+    );
+  };
 
+  const renderOtherUser = (user: OtherUser) => {
+    return (
+      <Link 
+        to={`/chat/${user.uid}`} 
+        key={user.uid} 
+        className="flex items-center gap-[15px] px-4 py-3 hover:bg-[var(--bg-main)] transition-all active:scale-[0.98] group"
+      >
+        <div className="relative shrink-0 select-none">
+          <img 
+            src={user.photoURL || `https://cdn-icons-png.flaticon.com/512/149/149071.png`} 
+            className="w-[52px] h-[52px] object-cover shadow-sm group-hover:scale-105 transition-transform rounded-full border border-[var(--border-color)]/30"
+            referrerPolicy="no-referrer"
+            alt={user.fullName || user.username}
+          />
+          {user.isOnline && (
+            <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[var(--bg-card)] rounded-full shadow-sm"></div>
+          )}
         </div>
-      </div>
-    </Link>
-  );
-
-  const renderOtherUser = (user: OtherUser) => (
-    <Link 
-      to={`/chat/${user.uid}`} 
-      key={user.uid} 
-      className="flex items-center gap-[15px] px-4 py-3 hover:bg-[var(--bg-main)] transition-all active:scale-[0.98] group"
-    >
-      <div className="relative shrink-0">
-        <img 
-          src={user.photoURL || `https://cdn-icons-png.flaticon.com/512/149/149071.png`} 
-          className="w-[52px] h-[52px] object-cover shadow-sm group-hover:scale-105 transition-transform rounded-full border border-[var(--border-color)]/30"
-          referrerPolicy="no-referrer"
-          alt={user.fullName || user.username}
-        />
-        {user.isOnline && (
-          <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 border-2 border-[var(--bg-card)] rounded-full shadow-sm"></div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/30 pb-3 group-last:border-0 relative">
-        <div className="flex justify-between items-baseline mb-0.5">
-          <h3 className="text-[15px] truncate font-bold text-[var(--text-primary)]">
-            {user.fullName || user.username}
-          </h3>
-          <span className="text-[10px] whitespace-nowrap text-[var(--text-secondary)] uppercase font-bold tracking-tight opacity-40">
-            Suggested
-          </span>
+        <div className="flex-1 min-w-0 border-b border-[var(--border-color)]/30 pb-3 group-last:border-0 relative">
+          <div className="flex justify-between items-baseline mb-0.5">
+            <h3 className="text-[15px] truncate font-bold text-[var(--text-primary)]">
+              {user.fullName || user.username}
+            </h3>
+            <span className="text-[10px] whitespace-nowrap text-[var(--text-secondary)] uppercase font-bold tracking-tight opacity-40">
+              Suggested
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-xs truncate font-medium text-[var(--text-secondary)] italic">
+              Say hi! 👋
+            </p>
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <p className="text-xs truncate font-medium text-[var(--text-secondary)] italic">
-            Say hi! 👋
-          </p>
-        </div>
-      </div>
-    </Link>
-  );
+      </Link>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-card)]">

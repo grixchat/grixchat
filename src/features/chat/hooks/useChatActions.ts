@@ -147,29 +147,48 @@ export const useChatActions = (conversationId: string, receiverId: string) => {
   }, [conversationId]);
 
   const reactToMessage = useCallback(async (msgId: string, emoji: string) => {
-    // Reaction logic could use a separate table in Supabase for better scalability
-    // But for now, if we want to stick to the same schema as before:
-    // We could add a 'reactions' jsonb column to messages
-    if (!user || !supabase) return;
-    
-    const { data: msg } = await supabase
-      .from('messages')
-      .select('reactions')
-      .eq('id', msgId)
-      .single();
-    
-    const reactions = (msg?.reactions as any) || {};
-    if (reactions[user.id] === emoji) {
-      delete reactions[user.id];
-    } else {
-      reactions[user.id] = emoji;
-    }
+    if (!user || !supabase || !conversationId) return;
 
-    await supabase
-      .from('messages')
-      .update({ reactions } as any)
-      .eq('id', msgId);
-  }, [user]);
+    // 1. Optimistic cache update to make reaction instant in the active UI
+    const cached = LocalDataCache.getMessages(conversationId) || [];
+    const updated = cached.map((m: any) => {
+      if (m.id === msgId) {
+        const reactions = { ...(m.reactions || {}) };
+        if (reactions[user.id] === emoji) {
+          delete reactions[user.id];
+        } else {
+          reactions[user.id] = emoji;
+        }
+        return { ...m, reactions };
+      }
+      return m;
+    });
+    LocalDataCache.saveMessages(conversationId, updated);
+    LocalDataCache.notify(`messages:${conversationId}`, updated);
+
+    // 2. Perform the server update
+    try {
+      const { data: msg } = await supabase
+        .from('messages')
+        .select('reactions')
+        .eq('id', msgId)
+        .single();
+      
+      const dbReactions = (msg?.reactions as any) || {};
+      if (dbReactions[user.id] === emoji) {
+        delete dbReactions[user.id];
+      } else {
+        dbReactions[user.id] = emoji;
+      }
+
+      await supabase
+        .from('messages')
+        .update({ reactions: dbReactions } as any)
+        .eq('id', msgId);
+    } catch (err) {
+      console.error('Error updating reaction in database:', err);
+    }
+  }, [user, conversationId]);
 
   const clearChat = useCallback(async () => {
     if (!supabase || !conversationId) return;

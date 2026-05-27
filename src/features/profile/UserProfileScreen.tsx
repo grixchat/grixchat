@@ -44,6 +44,7 @@ export default function UserProfileScreen() {
   const [isRequested, setIsRequested] = useState(false);
   const [isIncoming, setIsIncoming] = useState(false);
   const [requestProgress, setRequestProgress] = useState(false);
+  const [hasActiveStories, setHasActiveStories] = useState(false);
 
   const DEFAULT_LOGO = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
@@ -112,8 +113,22 @@ export default function UserProfileScreen() {
       }
     };
 
+    const checkStories = async () => {
+      try {
+        const { data } = await supabase
+          .from('stories')
+          .select('id')
+          .eq('user_id', userId)
+          .limit(1);
+        setHasActiveStories(data && data.length > 0 ? true : false);
+      } catch (err) {
+        console.error("Error checkStories:", err);
+      }
+    };
+
     fetchUser();
     checkFriendship();
+    checkStories();
 
     // Sync isBlocked
     if (myUserData) {
@@ -188,8 +203,11 @@ export default function UserProfileScreen() {
           {/* Beautiful and Compact Profile Card */}
           <div className="flex flex-col items-center text-center bg-[var(--bg-card)] p-6 rounded-2xl border border-[var(--border-color)]/60 shadow-sm mb-6 relative overflow-hidden">
             <div className="relative mb-4 shrink-0">
-              <div className="w-22 h-22 rounded-full p-[2.5px] border-[2.5px] border-[#0494f4] bg-[var(--bg-main)] flex items-center justify-center shrink-0">
-                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+              <div 
+                onClick={() => hasActiveStories && navigate(`/stories/view/${userId}`)}
+                className={`w-22 h-22 rounded-full p-[2.5px] border-[2.5px] bg-[var(--bg-main)] flex items-center justify-center shrink-0 ${hasActiveStories ? 'border-[#0494f4] cursor-pointer active:scale-95 transition-all shadow-md' : 'border-black dark:border-white'}`}
+              >
+                <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[var(--bg-main)]">
                   <img 
                     src={user.hidePhoto ? DEFAULT_LOGO : (user.photoURL || DEFAULT_LOGO)} 
                     className="w-full h-full object-cover shrink-0"

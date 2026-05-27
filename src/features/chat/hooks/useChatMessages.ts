@@ -227,30 +227,13 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 1
         schema: 'public', 
         table: 'messages',
         filter: `conversation_id=eq.${conversationId}`
-      }, async (payload) => {
-        const { data, error } = await supabase
-          .from('messages')
-          .select(`
-            *,
-            sender:users (
-              id,
-              username,
-              full_name,
-              photo_url
-            ),
-            reply_to:reply_to (
-              id,
-              text,
-              sender_id
-            )
-          `)
-          .eq('id', payload.new.id)
-          .single();
-
-        if (!error && data) {
-          data.content = data.text || data.content || '';
-          setMessages(prev => prev.map(m => m.id === data.id ? data : m));
-        }
+      }, (payload) => {
+        // Merge real-time updates directly to preserve metadata and render instantly
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? {
+          ...m,
+          ...payload.new,
+          content: payload.new.text || payload.new.content || m.content || ''
+        } : m));
       })
       .on('postgres_changes', {
         event: 'DELETE',
@@ -282,28 +265,21 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 1
   }, [conversationId, user?.id, fetchMessages]);
 
   const loadMore = useCallback(() => {
-    if (loading || loadingMore) return;
-    setMessageLimit(prev => prev + 15);
+    if (!loading && !loadingMore) setMessageLimit(prev => prev + 15);
   }, [loading, loadingMore]);
 
-  // Sync messages update with Local Cache
   useEffect(() => {
-    if (messages && messages.length > 0 && conversationId) {
+    if (messages?.length > 0 && conversationId) {
       LocalDataCache.saveMessages(conversationId, messages);
     }
   }, [messages, conversationId]);
 
-  // Listen to local messages caching updates
   useEffect(() => {
     if (!conversationId) return;
-    const unsubscribe = LocalDataCache.subscribe(`messages:${conversationId}`, (updatedMsgs) => {
-      if (updatedMsgs && Array.isArray(updatedMsgs)) {
-        setMessages(updatedMsgs);
-      }
+    const unsubscribe = LocalDataCache.subscribe(`messages:${conversationId}`, (updated) => {
+      if (updated && Array.isArray(updated)) setMessages(updated);
     });
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [conversationId]);
 
   return { 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearch } from '../../contexts/SearchContext.tsx';
 import { Link, useNavigate } from 'react-router-dom';
-import { MessageCircle, Phone, Video, ArrowUpRight, ArrowDownLeft, PhoneMissed, Info, Lock, Users, Search, X, Plus } from 'lucide-react';
+import { MessageCircle, Phone, Video, ArrowUpRight, ArrowDownLeft, PhoneMissed, Info, Lock, Users, Search, X, Plus, Loader2 } from 'lucide-react';
 import { useLayout } from '../../contexts/LayoutContext.tsx';
 import { motion } from 'motion/react';
 import { useConversations } from './hooks/useConversations.ts';
@@ -11,6 +11,7 @@ import { ChatUserList } from './components/ChatUserList.tsx';
 import { supabase } from '../../lib/supabase';
 import { getAcceptedChats, initializeAcceptedConversations } from '../../utils/acceptedChats';
 import { storage } from '../../services/StorageService';
+import { ImageService } from '../../services/ImageService';
 
 interface StoryGroup {
   userId: string;
@@ -32,38 +33,69 @@ export default function ChatsTab() {
   const loading = activeFilter === 'Calls' ? callsLoading : conversationsLoading;
 
   const [stories, setStories] = useState<StoryGroup[]>([]);
+  const [hasMyActiveStories, setHasMyActiveStories] = useState(false);
+  const [isUploadingStory, setIsUploadingStory] = useState(false);
+  const storyFileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchStories = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      const { data: storiesData } = await supabase
+        .from('stories')
+        .select('*, users:user_id(id, username, full_name, photo_url)')
+        .order('created_at', { ascending: false });
+
+      if (storiesData) {
+        const grouped: Record<string, StoryGroup> = {};
+        storiesData.forEach((s: any) => {
+          if (s.users && s.user_id !== authUser?.id) {
+            grouped[s.user_id] = {
+              userId: s.user_id,
+              username: s.users.username || 'User',
+              fullName: s.users.full_name || 'Grix User',
+              photoURL: s.users.photo_url || '',
+              hasUnseen: true
+            };
+          }
+        });
+        setStories(Object.values(grouped));
+        setHasMyActiveStories(storiesData.some((s: any) => s.user_id === authUser?.id));
+      }
+    } catch (e) {
+      console.error('Error fetching active stories on ChatsTab:', e);
+    }
+  }, [authUser?.id]);
 
   useEffect(() => {
-    const fetchStories = async () => {
-      if (!supabase) return;
-      try {
-        const { data: storiesData } = await supabase
-          .from('stories')
-          .select('*, users:user_id(id, username, full_name, photo_url)')
-          .order('created_at', { ascending: false });
-
-        if (storiesData) {
-          const grouped: Record<string, StoryGroup> = {};
-          storiesData.forEach((s: any) => {
-            if (s.users && s.user_id !== authUser?.id) {
-              grouped[s.user_id] = {
-                userId: s.user_id,
-                username: s.users.username || 'User',
-                fullName: s.users.full_name || 'Grix User',
-                photoURL: s.users.photo_url || '',
-                hasUnseen: true
-              };
-            }
-          });
-          setStories(Object.values(grouped));
-        }
-      } catch (e) {
-        console.error('Error fetching active stories on ChatsTab:', e);
-      }
-    };
-
     fetchStories();
-  }, [authUser?.id]);
+  }, [fetchStories]);
+
+  const handleDirectStoryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !authUser || !supabase) return;
+
+    setIsUploadingStory(true);
+    try {
+      const url = await ImageService.uploadImage(file, () => {}, 'stories');
+      
+      const { error } = await supabase.from('stories').insert({
+        user_id: authUser.id,
+        media_url: url,
+        type: 'image'
+      } as any);
+
+      if (error) throw error;
+      await fetchStories();
+    } catch (err) {
+      console.error("Error direct story upload:", err);
+      alert("Failed to share story.");
+    } finally {
+      setIsUploadingStory(false);
+      if (storyFileInputRef.current) {
+        storyFileInputRef.current.value = '';
+      }
+    }
+  };
 
   const isSecretCodeEntered = searchTerm && userData?.hiddenChatSettings?.secretCode && searchTerm === userData.hiddenChatSettings.secretCode;
 
@@ -103,27 +135,57 @@ export default function ChatsTab() {
             {/* Current User Story Circle */}
             <div className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer min-w-[72px]">
               <div 
-                onClick={() => navigate('/stories/create')} 
                 className="relative group shrink-0 active:scale-95 transition-transform"
               >
-                <div className="w-16 h-16 rounded-full p-[2px] border-2 border-[#0494f4] bg-[var(--bg-main)] flex items-center justify-center shrink-0 aspect-square">
-                  <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
-                    <img 
-                      src={userData?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
-                      alt="My profile"
-                      className="w-full h-full object-cover shrink-0"
-                      referrerPolicy="no-referrer"
-                    />
+                {/* Profile Pic Click: views story if active, else opens gallery */}
+                <div 
+                  onClick={() => {
+                    if (hasMyActiveStories) {
+                      navigate(`/stories/view/${authUser?.id}`);
+                    } else {
+                      storyFileInputRef.current?.click();
+                    }
+                  }}
+                  className={`w-16 h-16 rounded-full p-[2px] border-2 bg-[var(--bg-main)] flex items-center justify-center shrink-0 aspect-square ${hasMyActiveStories ? 'border-[#0494f4]' : 'border-black dark:border-white'}`}
+                >
+                  <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[var(--bg-main)] relative">
+                    {isUploadingStory ? (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <Loader2 size={20} className="animate-spin text-white" />
+                      </div>
+                    ) : (
+                      <img 
+                        src={userData?.photoURL || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+                        alt="My profile"
+                        className="w-full h-full object-cover shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
                   </div>
                 </div>
-                {/* Plus Icon Overlay */}
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#0494f4] text-white rounded-full flex items-center justify-center shadow-md border-2 border-[var(--bg-card)]">
-                  <Plus size={12} strokeWidth={2.5} />
+                {/* Plus Icon Overlay: directly opens system file selector */}
+                <span 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    storyFileInputRef.current?.click();
+                  }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#0494f4] hover:bg-[#0381d6] text-white rounded-full flex items-center justify-center shadow-md border-2 border-[var(--bg-card)] cursor-pointer transition-colors"
+                >
+                  {isUploadingStory ? <Loader2 size={10} className="animate-spin" /> : <Plus size={12} strokeWidth={2.5} />}
                 </span>
               </div>
               <span className="text-[10px] font-bold text-[var(--text-secondary)] text-center w-full truncate mt-0.5">
                 Your Story
               </span>
+
+              {/* Hidden file input for direct photo story upload */}
+              <input 
+                type="file" 
+                ref={storyFileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleDirectStoryUpload} 
+              />
             </div>
 
             {/* Stories from database */}
@@ -257,6 +319,7 @@ export default function ChatsTab() {
               onSecretHeaderClick={() => navigate('/chats/hidden')}
               secretCount={userData?.hiddenChats?.length || 0}
               loading={loading}
+              usersWithStories={stories.map(s => s.userId)}
             />
           )}
         </div>
