@@ -434,3 +434,15 @@ CREATE INDEX IF NOT EXISTS idx_stories_user ON public.stories(user_id);
 CREATE INDEX IF NOT EXISTS idx_calls_participants ON public.calls(caller_id, receiver_id);
 CREATE INDEX IF NOT EXISTS idx_chat_settings_user ON public.chat_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id);
+
+
+-- ===================================================
+-- 8. SUPABASE REALTIME ENABLEMENT (CRITICAL FOR INSTANT CHAT)
+-- ===================================================
+-- Please execute these lines in your Supabase SQL Editor to make sure 
+-- instant message sync, typing indicators, and presence tracking are enabled!
+-- 
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+-- ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
+

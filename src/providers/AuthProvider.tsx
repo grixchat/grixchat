@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
+import { storage } from '../services/StorageService';
 
 interface CustomUser extends User {
   uid: string; // Add uid to match Firebase interface expected by the rest of the app
@@ -19,10 +20,40 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<CustomUser | null>(null);
-  const [userData, setUserData] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [user, setUser] = useState<CustomUser | null>(() => {
+    try {
+      const cached = storage.getItem('grix_cached_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const [userData, setUserData] = useState<UserProfile | null>(() => {
+    try {
+      const cached = storage.getItem('grix_cached_userdata');
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      return !storage.getItem('grix_cached_user');
+    } catch (_) {
+      return true;
+    }
+  });
+
+  const [isAuthReady, setIsAuthReady] = useState(() => {
+    try {
+      return !!storage.getItem('grix_cached_user');
+    } catch (_) {
+      return false;
+    }
+  });
+
   const [followingIds, setFollowingIds] = useState<string[]>([]);
 
   const profileChannelRef = React.useRef<RealtimeChannel | null>(null);
@@ -31,6 +62,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfileData = async (currentUserId: string, isSubscribed: boolean) => {
     if (!supabase) return;
     try {
+      // Offline fallback check first
+      if (!navigator.onLine) {
+        console.log('Detected offline state during profile fetch, using cached profile.');
+        const cachedRaw = storage.getItem('grix_cached_userdata');
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            if (cached && cached.id === currentUserId) {
+              setUserData(cached);
+              if (cached.following) {
+                setFollowingIds(cached.following);
+              }
+              return;
+            }
+          } catch (_) {}
+        }
+      }
+
       let { data: profile, error: fetchError } = await supabase
         .from('users')
         .select('*')
@@ -38,10 +87,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (fetchError) {
-        console.warn('Error fetching profile, trying to upsert default:', fetchError);
+        console.warn('Error fetching profile:', fetchError);
+        // Fallback to cache on query error if offline/network issue
+        const isNetworkErr = !navigator.onLine || fetchError.message?.toLowerCase().includes('fetch') || fetchError.message?.toLowerCase().includes('network');
+        if (isNetworkErr) {
+          const cachedRaw = storage.getItem('grix_cached_userdata');
+          if (cachedRaw) {
+            try {
+              const cached = JSON.parse(cachedRaw);
+              if (cached && cached.id === currentUserId) {
+                setUserData(cached);
+                if (cached.following) {
+                  setFollowingIds(cached.following);
+                }
+                return;
+              }
+            } catch (_) {}
+          }
+        }
       }
 
       if (!profile) {
+        // If we get here and we are truly offline/network is broken, we should avoid auto-creating as it will fail
+        if (!navigator.onLine) {
+          return;
+        }
         // Safe auto-creation of profile row
         const email = user?.email || '';
         const emailPrefix = email ? email.split('@')[0] : 'grix_user';
@@ -93,20 +163,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Fetch following and followers
-      const { data: followings } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', currentUserId);
+      // Fetch following and followers with safety catch blocks to prevent crash block on offline
+      let following: string[] = [];
+      let followerIds: string[] = [];
+      try {
+        const { data: followings } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUserId);
 
-      const { data: followers } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('following_id', currentUserId);
+        const { data: followers } = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', currentUserId);
 
-      const following = followings?.map(f => f.following_id) || [];
-      const followerIds = followers?.map(f => f.follower_id) || [];
-      setFollowingIds(following);
+        following = followings?.map(f => f.following_id) || [];
+        followerIds = followers?.map(f => f.follower_id) || [];
+        setFollowingIds(following);
+      } catch (followsErr) {
+        console.warn('Error fetching follows offline, falling back:', followsErr);
+        const cachedRaw = storage.getItem('grix_cached_userdata');
+        if (cachedRaw) {
+          try {
+            const cached = JSON.parse(cachedRaw);
+            following = cached.following || [];
+            followerIds = cached.followers || [];
+            setFollowingIds(following);
+          } catch (_) {}
+        }
+      }
 
       if (isSubscribed && profile) {
         const p = profile as any;
@@ -137,6 +222,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.warn('Profile fetch error:', err);
+      // Main fallback on catch
+      const cachedRaw = storage.getItem('grix_cached_userdata');
+      if (cachedRaw) {
+        try {
+          const cached = JSON.parse(cachedRaw);
+          if (cached && cached.id === currentUserId) {
+            setUserData(cached);
+            if (cached.following) {
+              setFollowingIds(cached.following);
+            }
+          }
+        } catch (_) {}
+      }
     }
   };
 
@@ -345,37 +443,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.id]);
 
-  // 3. Visibility and BeforeUnload Handler
+  // 3. Visibility, Heartbeat, and BeforeUnload Handler
   useEffect(() => {
+    let heartbeatInterval: any = null;
+
     const setStatus = async (isOnline: boolean) => {
       if (supabase && user?.id) {
-        await supabase.from('users')
-          .update({
-            is_online: isOnline,
-            last_seen: new Date().toISOString()
-          } as any)
-          .eq('id', user.id);
+        try {
+          await supabase.from('users')
+            .update({
+              is_online: isOnline,
+              last_seen: new Date().toISOString()
+            } as any)
+            .eq('id', user.id);
+        } catch (e) {
+          console.warn('Unable to notify presence status change:', e);
+        }
       }
     };
 
     const handleVisibilityChange = () => {
-      setStatus(document.visibilityState === 'visible');
+      const isVisible = document.visibilityState === 'visible';
+      setStatus(isVisible);
+      
+      // Control heartbeat interval based on active visibility
+      if (isVisible) {
+        if (!heartbeatInterval) {
+          heartbeatInterval = setInterval(() => {
+            setStatus(true);
+          }, 60000);
+        }
+      } else {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+      }
     };
 
     const handleBeforeUnload = () => {
-      // Use navigator.sendBeacon or a synchronous fetch if possible, 
-      // but Supabase update is async. For beforeunload, we try our best.
       setStatus(false);
     };
+
+    // First trigger and establish heartbeat on mount
+    setStatus(true);
+    if (document.visibilityState === 'visible') {
+      heartbeatInterval = setInterval(() => {
+        setStatus(true);
+      }, 60000);
+    }
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [user?.id]);
+
+  // Sync state changes with local offline backup cache
+  useEffect(() => {
+    if (user) {
+      storage.setItem('grix_cached_user', JSON.stringify(user));
+    } else {
+      storage.removeItem('grix_cached_user');
+      storage.removeItem('grix_cached_userdata');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (userData) {
+      storage.setItem('grix_cached_userdata', JSON.stringify(userData));
+    }
+  }, [userData]);
 
   // 4. Failsafe to guarantee auth ready state and prevent page freeze under slow/blocked connections
   useEffect(() => {

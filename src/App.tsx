@@ -236,7 +236,8 @@ export default function App() {
 
   // Guard Logic
   const needsVerification = user && !user.email_confirmed_at && !(user.app_metadata?.providers || []).some((p: string) => ['google', 'github'].includes(p));
-  const needsProfileCompletion = user && isAuthReady && (!userData || !userData.username);
+  const isLocalStorageOffline = !navigator.onLine;
+  const needsProfileCompletion = user && isAuthReady && !isLocalStorageOffline && (!userData || !userData.username);
 
   if (user && isAuthReady) {
     const isPublicRoute = ['/login', '/signup', '/forgot-password', '/privacy-policy', '/terms', '/complete-profile', '/verify-email'].includes(location.pathname);

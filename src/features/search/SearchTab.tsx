@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useConversations } from '../chat/hooks/useConversations';
 import { getAcceptedChats, acceptChat } from '../../utils/acceptedChats';
 import { chatService } from '../chat/services/chatService';
+import { isUserOnline } from '../../utils/presence';
 
 interface UserProfile {
   uid: string;
@@ -64,7 +65,7 @@ export default function SearchTab() {
       // Fetch Suggested Users
       const { data: usersData } = await supabase
         .from('users')
-        .select('id, username, full_name, photo_url, is_online')
+        .select('id, username, full_name, photo_url, is_online, last_seen')
         .neq('id', authUser?.id)
         .limit(60);
       
@@ -78,7 +79,7 @@ export default function SearchTab() {
               username: u.username,
               fullName: u.full_name,
               photoURL: u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-              isOnline: u.is_online
+              isOnline: isUserOnline(u.is_online, u.last_seen)
             });
           }
         });
@@ -126,7 +127,7 @@ export default function SearchTab() {
     try {
       const { data } = await supabase
         .from('users')
-        .select('id, username, full_name, photo_url, is_online')
+        .select('id, username, full_name, photo_url, is_online, last_seen')
         .or(`username.ilike.%${term}%,full_name.ilike.%${term}%`)
         .neq('id', authUser?.id)
         .limit(50);
@@ -138,7 +139,7 @@ export default function SearchTab() {
             username: u.username,
             fullName: u.full_name,
             photoURL: u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-            isOnline: u.is_online
+            isOnline: isUserOnline(u.is_online, u.last_seen)
           }))
         );
       }

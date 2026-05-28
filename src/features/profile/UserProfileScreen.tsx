@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { truncateToChars } from '../../utils/bioHelper';
 import { chatService } from '../chat/services/chatService';
 import { acceptChat } from '../../utils/acceptedChats';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 export default function UserProfileScreen() {
   const { id: userId } = useParams();
@@ -69,6 +70,8 @@ export default function UserProfileScreen() {
             bio: u.bio,
             profileType: u.profile_type,
             hidePhoto: u.hide_photo,
+            is_online: u.is_online,
+            last_seen: u.last_seen,
             followers: [],
             following: []
           });
@@ -224,6 +227,13 @@ export default function UserProfileScreen() {
             <p className="text-xs text-[var(--text-secondary)] font-mono mt-1">
               @{user.username || 'username'}
             </p>
+
+            <div className="flex items-center gap-1.5 mt-2 bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-full border border-[var(--border-color)]/30">
+              <span className={`w-2 h-2 rounded-full ${isUserOnline(user.is_online, user.last_seen) ? 'bg-[#22c55e]' : 'bg-gray-400'}`}></span>
+              <span className="text-[10px] text-[var(--text-secondary)] font-mono font-semibold uppercase tracking-wider">
+                {formatLastSeen(user.is_online, user.last_seen)}
+              </span>
+            </div>
 
             <p className="text-xs text-[var(--text-secondary)] mt-3 max-w-xs font-semibold leading-relaxed">
               {user.bio ? truncateToChars(user.bio) : 'Available'}

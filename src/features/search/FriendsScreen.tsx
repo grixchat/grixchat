@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider.tsx';
 import { Search, X, Loader2, MessageSquare, ArrowLeft, Users, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { isUserOnline } from '../../utils/presence';
 
 interface FriendProfile {
   id: string;
@@ -56,7 +57,7 @@ export default function FriendsScreen() {
       if (mutualIds.length > 0) {
         const { data: friendsData, error: friendsError } = await supabase
           .from('users')
-          .select('id, username, full_name, photo_url, is_online')
+          .select('id, username, full_name, photo_url, is_online, last_seen')
           .in('id', mutualIds)
           .limit(100);
         
@@ -68,7 +69,7 @@ export default function FriendsScreen() {
             username: f.username,
             fullName: f.full_name,
             photoURL: f.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-            isOnline: f.is_online
+            isOnline: isUserOnline(f.is_online, f.last_seen)
           })));
         }
       } else {
