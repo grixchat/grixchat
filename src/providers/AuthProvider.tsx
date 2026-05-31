@@ -96,6 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
               const cached = JSON.parse(cachedRaw);
               if (cached && cached.id === currentUserId) {
+                // Ensure local offline cache is also truncated if it was legacy too-long
+                if (cached.username && cached.username.length > 15) {
+                  cached.username = cached.username.substring(0, 15);
+                }
                 setUserData(cached);
                 if (cached.following) {
                   setFollowingIds(cached.following);
@@ -104,6 +108,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             } catch (_) {}
           }
+        }
+      }
+
+      // Automatically truncate legacy too-long user names on load
+      if (profile && profile.username && profile.username.length > 15) {
+        const truncated = profile.username.substring(0, 15);
+        console.log(`Auto-truncating legacy username for user ${currentUserId}: ${profile.username} -> ${truncated}`);
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('users')
+          .update({ username: truncated } as any)
+          .eq('id', currentUserId)
+          .select()
+          .maybeSingle();
+
+        if (!updateError && updatedProfile) {
+          profile = updatedProfile;
+        } else {
+          profile.username = truncated;
         }
       }
 
@@ -117,7 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const emailPrefix = email ? email.split('@')[0] : 'grix_user';
         const baseUsername = emailPrefix.toLowerCase().replace(/[^a-z0-9_]/g, '');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 30);
+        // Strict 15-char substring
+        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 15);
         const fullName = user?.user_metadata?.full_name || emailPrefix || 'Grix User';
         const photoUrl = user?.user_metadata?.avatar_url || `https://cdn-icons-png.flaticon.com/512/149/149071.png`;
 
@@ -146,7 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const emailPrefix = email ? email.split('@')[0] : 'grix_user';
         const baseUsername = emailPrefix.toLowerCase().replace(/[^a-z0-9_]/g, '');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 30);
+        // Strict 15-char substring
+        const finalUsername = `${baseUsername || 'user'}_${randomSuffix}`.substring(0, 15);
 
         console.log('Updating missing username for existing profile', currentUserId);
         const { data: updatedProfile, error: updateError } = await supabase
@@ -209,8 +233,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           status: p.is_online ? 'online' : 'offline',
           hiddenChats: p.hidden_chats || [],
           archivedChats: p.archived_chats || [],
-          hiddenChatSettings: p.hidden_chat_settings,
+          hiddenChatSettings: p.hidden_chat_settings || p.settings?.hidden_chat_settings || {},
+          fcmTokens: p.fcm_tokens || [],
           settings: p.settings,
+          lock: p.lock,
           saved_posts: p.saved_posts || [],
           blockedUsers: p.blocked_users || [],
           blocked_users: p.blocked_users || [],

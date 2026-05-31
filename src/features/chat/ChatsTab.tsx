@@ -97,15 +97,27 @@ export default function ChatsTab() {
     }
   };
 
-  const isSecretCodeEntered = searchTerm && userData?.hiddenChatSettings?.secretCode && searchTerm === userData.hiddenChatSettings.secretCode;
+  const isSecretCodeEntered = !!(
+    searchTerm && 
+    userData?.hiddenChatSettings?.secretCode && 
+    searchTerm.trim().toLowerCase() === userData.hiddenChatSettings.secretCode.trim().toLowerCase()
+  );
+
+  // Extract all user IDs that are part of hidden conversations
+  const hiddenUserIds = React.useMemo(() => {
+    if (!userData?.hiddenChats || !conversations) return [];
+    return conversations
+      .filter(c => userData.hiddenChats.includes(c.id))
+      .map(c => c.otherUserId);
+  }, [userData?.hiddenChats, conversations]);
 
   const filteredConversations = conversations.filter(c => {
     if (c.type === 'group') return false; // Move groups to dedicated groups tab
     const isHidden = Array.isArray(userData?.hiddenChats) && userData.hiddenChats.includes(c.id);
     const isArchived = Array.isArray(userData?.archivedChats) && userData.archivedChats.includes(c.id);
     
-    // Only show hidden chats if the secret code is entered
-    if (isHidden && !isSecretCodeEntered) return false;
+    // Always hide hidden chats from the main chat lists/matches (they only show in unlocked /chats/hidden screen)
+    if (isHidden) return false;
     if (isArchived) return false;
 
     // Filter out Message Requests (not yet accepted)
@@ -120,6 +132,9 @@ export default function ChatsTab() {
   });
 
   const filteredOtherUsers = otherUsers.filter(u => {
+    // Hide users who are part of any hidden conversation from standard suggestions
+    if (hiddenUserIds.includes(u.uid)) return false;
+
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (u.fullName || "")?.toLowerCase().includes(term) || 
@@ -245,21 +260,27 @@ export default function ChatsTab() {
               <p className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-widest">Loading {activeFilter === 'Calls' ? 'Calls' : 'Chats'}...</p>
             </div>
           ) : activeFilter === 'Calls' ? (
-            calls.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 px-10 text-center gap-4">
-                <div className="p-4 bg-[var(--bg-main)] rounded-full text-[var(--text-secondary)]">
-                  <Phone size={40} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1">No calls yet</h3>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Your recent calls will appear here.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="divide-y divide-[var(--border-color)]">
-                {calls.map((call) => (
+            (() => {
+              const filteredCalls = calls.filter(call => !hiddenUserIds.includes(call.otherUserId));
+              if (filteredCalls.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-20 px-10 text-center gap-4">
+                    <div className="p-4 bg-[var(--bg-main)] rounded-full text-[var(--text-secondary)]">
+                      <Phone size={40} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1">No calls yet</h3>
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        Your recent calls will appear here.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="divide-y divide-[var(--border-color)]">
+                  {filteredCalls.map((call) => (
+
                   <motion.div 
                     key={call.id}
                     initial={{ opacity: 0 }}
@@ -307,7 +328,8 @@ export default function ChatsTab() {
                   </motion.div>
                 ))}
               </div>
-            )
+            );
+          })()
           ) : (
             <ChatUserList 
               conversations={filteredConversations}
@@ -318,6 +340,7 @@ export default function ChatsTab() {
               showSecretHeader={isSecretCodeEntered}
               onSecretHeaderClick={() => navigate('/chats/hidden')}
               secretCount={userData?.hiddenChats?.length || 0}
+              showHiddenChatsEntry={userData?.hiddenChatSettings?.showMenuEntry !== false}
               loading={loading}
               usersWithStories={stories.map(s => s.userId)}
             />

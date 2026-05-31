@@ -43,7 +43,7 @@ const ArchivedChatScreen = React.lazy(() => import('./features/chat/ArchivedChat
 const HideChatSettings = React.lazy(() => import('./features/chat/HideChatSettings'));
 const MessageRequestsScreen = React.lazy(() => import('./features/chat/MessageRequestsScreen'));
 const SearchUserScreen = React.lazy(() => import('./features/chat/SearchUserScreen'));
-const GrixAIScreen = React.lazy(() => import('./features/chat/GrixAIScreen'));
+const GrixAIScreen = React.lazy(() => import('./features/grixai/GrixAIScreen'));
 const ChatSettingsScreen = React.lazy(() => import('./features/chat/ChatSettingsScreen'));
 
 const SearchTab = React.lazy(() => import('./features/search/SearchTab'));
@@ -56,7 +56,7 @@ const LikeNotificationsScreen = React.lazy(() => import('./features/notification
 // ProfileTab directly imported above
 const EditProfileScreen = React.lazy(() => import('./features/profile/EditProfileScreen'));
 const UserProfileScreen = React.lazy(() => import('./features/profile/UserProfileScreen'));
-const GrixAIProfile = React.lazy(() => import('./features/profile/GrixAIProfile'));
+const GrixAIProfile = React.lazy(() => import('./features/grixai/GrixAIProfile'));
 
 
 const CallsTab = React.lazy(() => import('./features/call/CallsTab'));
@@ -156,18 +156,58 @@ export default function App() {
     }
   }, [location]);
 
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    return storage.getItem('grix_session_unlocked') === 'true';
+  });
   const [initialLockCheckDone, setInitialLockCheckDone] = useState(false);
 
   useEffect(() => {
     if (isAuthReady) {
       const lockData = LockService.getLockDataFromProfile(userData);
-      if (!lockData.isEnabled) {
+      if (!lockData.isEnabled || storage.getItem('grix_session_unlocked') === 'true') {
         setIsUnlocked(true);
+      } else {
+        setIsUnlocked(false);
       }
       setInitialLockCheckDone(true);
     }
   }, [isAuthReady, userData]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab went background/hidden, save current epoch
+        storage.setItem('gx_last_active', Date.now().toString());
+      } else {
+        // Tab is foregrounded
+        const lockData = LockService.getLockDataFromProfile(userData);
+        if (lockData && lockData.isEnabled) {
+          const lastActiveStr = storage.getItem('gx_last_active');
+          const timeoutStr = storage.getItem('app-lock-timeout') || '0'; // default: immediate
+          
+          if (lastActiveStr && timeoutStr !== 'never') {
+            const lastActive = parseInt(lastActiveStr);
+            const timeout = parseInt(timeoutStr); // seconds
+            const elapsed = (Date.now() - lastActive) / 1000;
+            
+            if (elapsed > timeout) {
+              storage.removeItem('grix_session_unlocked');
+              setIsUnlocked(false);
+            }
+          } else if (timeoutStr === '0') {
+            // Lock immediately on tab focus loss
+            storage.removeItem('grix_session_unlocked');
+            setIsUnlocked(false);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [userData]);
 
   useEffect(() => {
     const loadCount = parseInt(storage.getItem('loadCount') || '0');
@@ -231,7 +271,14 @@ export default function App() {
   }
 
   if (!isUnlocked) {
-    return <GlobalLockScreen onUnlock={() => setIsUnlocked(true)} />;
+    return (
+      <GlobalLockScreen 
+        onUnlock={() => {
+          storage.setItem('grix_session_unlocked', 'true');
+          setIsUnlocked(true);
+        }} 
+      />
+    );
   }
 
   // Guard Logic

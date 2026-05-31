@@ -29,6 +29,30 @@ export default function SearchTab() {
   const [requestCount, setRequestCount] = useState(0);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
+  const [hiddenUserIds, setHiddenUserIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!supabase || !authUser?.id || !userData?.hiddenChats || userData.hiddenChats.length === 0) {
+      setHiddenUserIds([]);
+      return;
+    }
+    const fetchHiddenUserIds = async () => {
+      try {
+        const { data } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', userData.hiddenChats)
+          .neq('user_id', authUser.id);
+        
+        if (data) {
+          setHiddenUserIds(data.map(d => d.user_id));
+        }
+      } catch (e) {
+        console.warn("Failed to fetch hidden user ids inside search:", e);
+      }
+    };
+    fetchHiddenUserIds();
+  }, [userData?.hiddenChats, authUser?.id]);
 
   const fetchInitialData = async (showLoading = false) => {
     if (!supabase || !authUser?.id) return;
@@ -347,7 +371,7 @@ export default function SearchTab() {
             )}
 
             <div className="mt-1">
-              {(searchTerm ? userResults : suggestedUsers).map((profile) => {
+              {(searchTerm ? userResults : suggestedUsers).filter(profile => !hiddenUserIds.includes(profile.uid)).map((profile) => {
                 const isFollowing = followingIds.includes(profile.uid) || localRequestedUids.includes(profile.uid);
                 const isFollower = followerIds.includes(profile.uid);
                 const isMutual = isFollowing && isFollower;

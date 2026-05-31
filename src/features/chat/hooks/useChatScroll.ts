@@ -29,7 +29,7 @@ export function useChatScroll(
     scrollHeightRef.current = target.scrollHeight;
     scrollTopRef.current = target.scrollTop;
 
-    if (target.scrollTop === 0 && !loadingMore && !loading && messages.length >= 15) {
+    if (target.scrollTop === 0 && !loadingMore && !loading && messages.length >= 20) {
       loadMore();
     }
   }, [loading, loadingMore, messages.length, loadMore]);

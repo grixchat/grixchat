@@ -4,6 +4,7 @@ import { chatService } from '../services/chatService';
 import { useAuth } from '../../../providers/AuthProvider.tsx';
 import { SupabaseStorageService } from '../../../services/SupabaseStorageService.ts';
 import { LocalDataCache } from '../../../services/LocalDataCache';
+import { pushNotificationService } from '../services/pushNotificationService';
 
 export const useChatActions = (conversationId: string, receiverId: string) => {
   const { user, userData } = useAuth();
@@ -72,6 +73,47 @@ export const useChatActions = (conversationId: string, receiverId: string) => {
         const finalMsgs = [...filtered, stableMessage].sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         LocalDataCache.saveMessages(conversationId, finalMsgs);
         LocalDataCache.notify(`messages:${conversationId}`, finalMsgs);
+
+        // Dispatch background push alert logic
+        pushNotificationService.sendNotificationForMessage(
+          conversationId,
+          user.id,
+          userData?.fullName || userData?.username || 'GrixChat User',
+          text,
+          mediaData?.type
+        ).catch(err => console.warn('pushNotificationService activation errored:', err));
+
+        // Background failsafe auto-pruner to cap Supabase message count in this chat to 60.
+        // If count hits >= 60, we remove the oldest 20 messages so only 40 are left.
+        (async () => {
+          try {
+            const { count, error: countErr } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', conversationId);
+
+            if (!countErr && count && count >= 60) {
+              const { data: oldest, error: selectErr } = await supabase
+                .from('messages')
+                .select('id')
+                .eq('conversation_id', conversationId)
+                .order('created_at', { ascending: true })
+                .limit(20);
+
+              if (!selectErr && oldest && oldest.length > 0) {
+                const idsToDelete = oldest.map(o => o.id);
+                await supabase
+                  .from('messages')
+                  .delete()
+                  .in('id', idsToDelete);
+                console.log(`[Message Pruning] Successfully pruned oldest 20 messages in conversation ${conversationId}.`);
+              }
+            }
+          } catch (e) {
+            console.error('[Message Pruning] Failsafe error:', e);
+          }
+        })();
+
         return stableMessage;
       }
     } catch (error) {

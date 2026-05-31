@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { aiService } from '../../../services/AIService';
 
 interface UseChatFormHandlerProps {
   chatId: string;
@@ -91,9 +92,32 @@ export function useChatFormHandler({
           performSendMessage({
             text: textToSend,
             replyTo: filesToSend.length === 0 ? replyContext : null
-          }).then(result => {
+          }).then(async result => {
             if (result && tempId) {
               confirmOptimisticMessage(tempId, result);
+            }
+            
+            // Check if user is asking the Grix AI shortcut
+            const trimmed = textToSend.trim();
+            if (trimmed.toLowerCase().startsWith('/ai')) {
+              // Extract original prompt after /ai
+              const promptQuery = trimmed.replace(/^\/ai\s*/i, '').trim();
+              if (promptQuery) {
+                try {
+                  const replyText = await aiService.sendMessage(
+                    promptQuery,
+                    "Keep your response concise, as this is happening inside a standard text thread. Always keep formatting beautifully flat and user-focused."
+                  );
+                  
+                  // Post AI message live into the database using a custom prefix for client detection 
+                  await performSendMessage({
+                    text: `🤖 Grix AI: ${replyText}`,
+                    replyTo: result || null
+                  });
+                } catch (grixErr) {
+                  console.error("Grix AI inline shortcut error:", grixErr);
+                }
+              }
             }
           }).catch(err => {
             console.error("Error sending text:", err);

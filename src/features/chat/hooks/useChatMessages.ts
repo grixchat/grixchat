@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../providers/AuthProvider.tsx';
 import { LocalDataCache } from '../../../services/LocalDataCache';
 
-export const useChatMessages = (conversationId: string, initialLimit: number = 15) => {
+export const useChatMessages = (conversationId: string, initialLimit: number = 20) => {
   const [messages, setMessages] = useState<any[]>(() => {
     if (conversationId) {
       const cached = LocalDataCache.getMessages(conversationId);
@@ -102,8 +102,21 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 1
       reversed.forEach((m: any) => {
         m.content = m.text || m.content || '';
       });
-      LocalDataCache.saveMessages(conversationId, reversed);
-      setMessages(reversed);
+      
+      setMessages(prev => {
+        const mergedMap = new Map();
+        prev.forEach(msg => {
+          if (msg && msg.id) mergedMap.set(msg.id, msg);
+        });
+        reversed.forEach(msg => {
+          if (msg && msg.id) mergedMap.set(msg.id, msg);
+        });
+        const mergedList = Array.from(mergedMap.values())
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        
+        LocalDataCache.saveMessages(conversationId, mergedList);
+        return mergedList;
+      });
     }
     
     setLoading(false);
@@ -268,7 +281,17 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 1
         table: 'messages',
         filter: `conversation_id=eq.${conversationId}`
       }, (payload) => {
-        setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        setMessages(prev => {
+          const index = prev.findIndex(m => m.id === payload.old.id);
+          if (index === -1) return prev;
+          
+          // If deleted message is more than 30 messages deep from newest, it's db pruning! Keep it in UI from local cache.
+          const isPrune = (prev.length - index) > 30;
+          if (isPrune) {
+            return prev;
+          }
+          return prev.filter(m => m.id !== payload.old.id);
+        });
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
@@ -293,7 +316,7 @@ export const useChatMessages = (conversationId: string, initialLimit: number = 1
   }, [conversationId, user?.id]);
 
   const loadMore = useCallback(() => {
-    if (!loading && !loadingMore) setMessageLimit(prev => prev + 15);
+    if (!loading && !loadingMore) setMessageLimit(prev => prev + 20);
   }, [loading, loadingMore]);
 
   useEffect(() => {
