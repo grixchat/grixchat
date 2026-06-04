@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, Mic, MicOff, StopCircle, Trash2, Camera as CameraIcon, Paperclip } from 'lucide-react';
+import { X, SendHorizontal, Loader2, Mic, MicOff, StopCircle, Trash2, Camera as CameraIcon, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -95,6 +95,8 @@ export default function ChatBottom({
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const fallbackImageInputRef = useRef<HTMLInputElement>(null);
+  const actualImageInputRef = imageInputRef || fallbackImageInputRef;
 
   const handleCameraCapture = (file: File, captionText: string) => {
     setSelectedFiles([...selectedFiles, file]);
@@ -115,6 +117,40 @@ export default function ChatBottom({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Automatically focus on replyingTo
+  useEffect(() => {
+    if (replyingTo && textareaRef?.current) {
+      textareaRef.current.focus();
+    }
+  }, [replyingTo, textareaRef]);
+
+  // Global keydown listeners for quick autofocus on typing
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if modifier keys are pressed
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      
+      // Don't intercept if focusing an editable element already
+      const activeEl = document.activeElement;
+      if (activeEl) {
+        const tagName = activeEl.tagName.toLowerCase();
+        if (tagName === 'input' || tagName === 'textarea' || activeEl.hasAttribute('contenteditable')) {
+          return;
+        }
+      }
+
+      // Check if it's a typing key (length is 1, e.g. letters, numbers, spaces, punctuation)
+      if (e.key.length === 1 && textareaRef?.current) {
+        textareaRef.current.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [textareaRef]);
 
   const startRecording = async () => {
     try {
@@ -343,6 +379,15 @@ export default function ChatBottom({
 
                   <input 
                     type="file" 
+                    ref={actualImageInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                    accept="image/*,video/*"
+                    multiple
+                  />
+
+                  <input 
+                    type="file" 
                     ref={fileInputRef} 
                     className="hidden" 
                     onChange={handleFileChange}
@@ -391,7 +436,7 @@ export default function ChatBottom({
           ) : isMicMode ? (
             <Mic size={24} />
           ) : (
-            <Send size={24} className="ml-1 text-white" />
+            <SendHorizontal size={24} className="text-white" />
           )}
         </button>
       </div>
