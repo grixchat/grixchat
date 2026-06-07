@@ -1,14 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { CallsHistoryList } from './components/CallsHistoryList';
 import { CallsContactsList } from './components/CallsContactsList';
 import { LocalDataCache } from '../../services/LocalDataCache';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  MoreVertical, 
+  History, 
+  PhoneMissed, 
+  Users, 
+  LogIn, 
+  Video, 
+  PhoneCall 
+} from 'lucide-react';
 
 // Modular Call Module elements
-import { CallsQuickActions, StatusFilterOption } from './components/CallsQuickActions';
-import { CallsSearchBar } from './components/CallsSearchBar';
+import { StatusFilterOption } from './components/CallsQuickActions';
+import { CommonSearchBar } from '../../components/common/CommonSearchBar';
 import { MeetingView } from './components/MeetingView';
 import { JoinView } from './components/JoinView';
 
@@ -50,11 +60,83 @@ export default function CallsTab() {
     return true;
   });
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilterOption>('calls');
+  const [limit, setLimit] = useState(15);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Keep references to current calls and contacts to prevent state-reset loop
+  const callsRef = useRef(calls);
+  const contactsRef = useRef(contacts);
+
+  useEffect(() => {
+    callsRef.current = calls;
+  }, [calls]);
+
+  useEffect(() => {
+    contactsRef.current = contacts;
+  }, [contacts]);
+
+  const [statusFilter, setStatusFilter] = useState<StatusFilterOption>(() => {
+    try {
+      return (localStorage.getItem('grixchat-calls-filter') as StatusFilterOption) || 'calls';
+    } catch (e) {
+      return ((window as any).__fallbackStorage?.['grixchat-calls-filter'] as StatusFilterOption) || 'calls';
+    }
+  });
   const [meetingCopied, setMeetingCopied] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFilterChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.filter) {
+        setStatusFilter(customEvent.detail.filter as StatusFilterOption);
+        setSearchTerm('');
+      }
+    };
+
+    const handleCreateMeeting = () => {
+      handleOpenMeeting();
+    };
+
+    window.addEventListener('calls-tab-filter-change', handleFilterChange);
+    window.addEventListener('calls-tab-create-meeting', handleCreateMeeting);
+
+    return () => {
+      window.removeEventListener('calls-tab-filter-change', handleFilterChange);
+      window.removeEventListener('calls-tab-create-meeting', handleCreateMeeting);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Sync state with Cache when authUser becomes resolved to eliminate blinking/white flashes
+  useEffect(() => {
+    if (authUser?.id) {
+      const cachedCalls = LocalDataCache.get<any[]>(`gx_calls_history_${authUser.id}`);
+      if (cachedCalls && Array.isArray(cachedCalls) && cachedCalls.length > 0) {
+        setCalls(cachedCalls);
+        setCallsLoading(false);
+      }
+      const cachedContacts = LocalDataCache.get<any[]>(`gx_calls_contacts_${authUser.id}`);
+      if (cachedContacts && Array.isArray(cachedContacts) && cachedContacts.length > 0) {
+        setContacts(cachedContacts);
+        setContactsLoading(false);
+      }
+    }
+  }, [authUser?.id]);
 
   const authUserZone = () => {
     return authUser && authUser.id;
@@ -101,25 +183,42 @@ export default function CallsTab() {
     navigate(`/call/${cleanCode}?type=video`);
   };
 
-  const fetchCalls = async () => {
-    if (!authUser || !supabase) return;
+  const fetchCalls = React.useCallback(async () => {
+    if (!authUser?.id || !supabase) return;
     try {
-      if (calls.length === 0) {
-        setCallsLoading(true);
+      const cached = LocalDataCache.get<any[]>(`gx_calls_history_${authUser.id}`);
+      const currentCalls = callsRef.current;
+      const hasData = (currentCalls && currentCalls.length > 0) || (cached && cached.length > 0);
+      
+      if (limit === 15) {
+        if (!hasData) {
+          setCallsLoading(true);
+        }
+      } else {
+        setLoadingMore(true);
       }
+
       const { data, error } = await supabase
         .from('calls')
         .select(`
           *,
-          caller:caller_id(username, photo_url, full_name),
-          receiver:receiver_id(username, photo_url, full_name)
+          caller:users!calls_caller_id_fkey (id, username, photo_url, full_name),
+          receiver:users!calls_receiver_id_fkey (id, username, photo_url, full_name)
         `)
         .or(`caller_id.eq.${authUser.id},receiver_id.eq.${authUser.id}`)
         .order('created_at', { ascending: false })
-        .limit(60);
+        .limit(limit + 1);
 
       if (!error && data) {
-        const callList = data.map((c: any) => {
+        let hasMoreData = false;
+        let queryData = data || [];
+        if (queryData.length > limit) {
+          hasMoreData = true;
+          queryData = queryData.slice(0, limit);
+        }
+        setHasMore(hasMoreData);
+
+        const callList = queryData.map((c: any) => {
           const isCaller = c.caller_id === authUser.id;
           const otherUser = isCaller ? c.receiver : c.caller;
           
@@ -141,13 +240,27 @@ export default function CallsTab() {
       console.error("Error fetching calls:", e);
     } finally {
       setCallsLoading(false);
+      setLoadingMore(false);
+    }
+  }, [authUser?.id, limit]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isScrollable = target.scrollHeight > target.clientHeight;
+    if (isScrollable && target.scrollTop > 0 && target.scrollHeight - target.scrollTop <= target.clientHeight + 85) {
+      if (hasMore && !loadingMore && !callsLoading && statusFilter !== 'contacts') {
+        setLimit(prev => prev + 15);
+      }
     }
   };
 
-  const fetchContacts = async () => {
+  const fetchContacts = React.useCallback(async () => {
     if (!authUserZone() || !supabase) return;
     try {
-      if (contacts.length === 0) {
+      const cached = LocalDataCache.get<any[]>(`gx_calls_contacts_${authUser?.id}`);
+      const currentContacts = contactsRef.current;
+      const hasData = (currentContacts && currentContacts.length > 0) || (cached && cached.length > 0);
+      if (!hasData) {
         setContactsLoading(true);
       }
       
@@ -205,7 +318,7 @@ export default function CallsTab() {
     } finally {
       setContactsLoading(false);
     }
-  };
+  }, [authUser?.id]);
 
   useEffect(() => {
     fetchCalls();
@@ -232,13 +345,13 @@ export default function CallsTab() {
     return () => {
       channel.unsubscribe();
     };
-  }, [authUser]);
+  }, [authUser?.id, fetchCalls, fetchContacts]);
 
   useEffect(() => {
     if (statusFilter === 'contacts') {
       fetchContacts();
     }
-  }, [statusFilter]);
+  }, [statusFilter, fetchContacts]);
 
   const startCallDirectly = (userId: string, callType: 'voice' | 'video') => {
     navigate(`/call/${userId}?type=${callType}`);
@@ -258,7 +371,10 @@ export default function CallsTab() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-card)] font-sans relative">
+    <div 
+      className="flex flex-col h-full bg-bg-card font-sans relative overflow-hidden"
+      style={{ backgroundColor: 'var(--bg-card)' }}
+    >
       
       {/* 1. Full-Screen Overlay for Meetings */}
       {statusFilter === 'meeting' && (
@@ -286,21 +402,18 @@ export default function CallsTab() {
         />
       )}
 
-      {/* 3. Base Calls List Layout (Only shown when not overlayed) */}
-      {statusFilter !== 'meeting' && statusFilter !== 'join' && (
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
-          {/* Quick Actions Selector bar */}
-          <CallsQuickActions 
-            statusFilter={statusFilter}
-            onStatusChange={(filter) => {
-              setSearchTerm('');
-              setStatusFilter(filter);
-            }}
-            onCreateMeeting={handleOpenMeeting}
-          />
-
-          {/* Search bar */}
-          <CallsSearchBar 
+      {/* 3. Base Calls List Layout (Always mounted to prevent unmounting flashes) */}
+      <div 
+        className="flex-1 flex flex-col min-h-0 bg-bg-card"
+        style={{ backgroundColor: 'var(--bg-card)' }}
+      >
+        <div 
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto no-scrollbar pb-32 bg-bg-card"
+          style={{ backgroundColor: 'var(--bg-card)' }}
+        >
+          {/* Search bar inside scroll viewport */}
+          <CommonSearchBar 
             placeholder={statusFilter === 'contacts' ? "Search contact name..." : "Search calls..."}
             value={searchTerm}
             onChange={setSearchTerm}
@@ -317,16 +430,24 @@ export default function CallsTab() {
                 searchTerm={searchTerm}
               />
             ) : (
-              <CallsHistoryList 
-                calls={getFilteredCalls()} 
-                loading={callsLoading} 
-                onCall={startCallDirectly} 
-                onReset={fetchCalls}
-              />
+              <>
+                <CallsHistoryList 
+                  calls={getFilteredCalls()} 
+                  loading={callsLoading} 
+                  onCall={startCallDirectly} 
+                  onReset={fetchCalls}
+                />
+                {loadingMore && (
+                  <div className="flex items-center justify-center py-4 gap-2 bg-[var(--bg-card)]">
+                    <div className="w-4 h-4 border-2 border-[#0494f4]/20 border-t-[#0494f4] rounded-full animate-spin" />
+                    <span className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider">Loading more calls...</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
