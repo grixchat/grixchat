@@ -9,52 +9,42 @@ import { CallStatus, CallType } from './types/callTypes';
 import { CallHeader } from './components/CallHeader';
 import { CallControlPanel } from './components/CallControlPanel';
 import { VideoFeed } from './components/VideoFeed';
-import { useWebrtc } from './hooks/useWebrtc';
 
 export default function CallScreen() {
   const { id: otherUserId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser } = useAuth();
-  const { playOutgoingBeep, stopSounds } = useCall();
+  
+  const {
+    activeCall,
+    localStream,
+    remoteStream,
+    timer,
+    isMuted,
+    isVideoOff,
+    speakerState,
+    isScreenSharing,
+    initiateCall,
+    endCall,
+    toggleMute,
+    toggleVideo,
+    toggleSpeaker,
+    toggleScreenShare,
+    flipCamera,
+    stopSounds
+  } = useCall();
   
   const queryParams = new URLSearchParams(location.search);
   const type = (queryParams.get('type') || 'voice') as CallType; 
   const isReceiver = queryParams.get('role') === 'receiver';
-  const urlCallId = queryParams.get('callId');
 
   const [receiver, setReceiver] = useState<any>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(type === 'voice');
-  const [speakerState, setSpeakerState] = useState<number>(2); // 0 = voice muted, 1 = earpiece, 2 = loudspeaker
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [callStatus, setCallStatus] = useState<CallStatus>('connecting');
-  const [timer, setTimer] = useState(0);
-  const [currentCallId, setCurrentCallId] = useState<string | null>(urlCallId);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const screenStreamRef = useRef<MediaStream | null>(null);
 
-  // Stop outgoing sound effects when line connected/finalized
-  useEffect(() => {
-    if (['connected', 'ended', 'denied', 'error', 'offline'].includes(callStatus)) {
-      stopSounds();
-    }
-  }, [callStatus, stopSounds]);
-
-  // Duration Timer
-  useEffect(() => {
-    let interval: any;
-    if (callStatus === 'connected') {
-      interval = setInterval(() => {
-        setTimer(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [callStatus]);
-
-  // Retrieve recipient details from database
+  // Retrieve recipient details from database as fallback if needed
   useEffect(() => {
     if (!supabase || !otherUserId) return;
     supabase
@@ -68,205 +58,153 @@ export default function CallScreen() {
       .catch(e => console.warn("Error fetching calling recipient details:", e));
   }, [otherUserId]);
 
-  const addMessageToChat = async (status: 'started' | 'ended' | 'missed', cid: string) => {
-    if (!authUser || !otherUserId || !supabase) return;
-    try {
-      const { data: convId } = await supabase.rpc('get_direct_conversation_id', { u1: authUser.id, u2: otherUserId });
-      let finalConvId = convId;
-
-      if (!finalConvId) {
-        const generatedId = crypto.randomUUID();
-        const { error } = await supabase.from('conversations').insert({ id: generatedId, type: 'direct' } as any);
-        if (!error) {
-          await supabase.from('conversation_participants').insert([
-            { conversation_id: generatedId, user_id: authUser.id },
-            { conversation_id: generatedId, user_id: otherUserId }
-          ]);
-          finalConvId = generatedId;
-        }
-      }
-
-      if (finalConvId) {
-        const text = status === 'started' ? `📞 Started a ${type} call` : 
-                     status === 'missed' ? `📥 Missed ${type} call` : 
-                     `🏁 ${type.charAt(0).toUpperCase() + type.slice(1)} call ended`;
-        
-        await supabase.from('messages').insert({
-          conversation_id: finalConvId,
-          sender_id: authUser.id,
-          text,
-          type: 'system',
-          metadata: { callId: cid, callStatus: status, callType: type }
-        } as any);
-      }
-    } catch (e) {
-      console.warn("Error adding call message:", e);
-    }
-  };
-
-  const endCallLocally = () => {
-    endCallPeer();
-    stopSounds();
-    if (location.pathname.includes('/call/')) {
-      navigate('/chats', { replace: true });
-    }
-  };
-
-  // Wire WebRTC signaling and media flow
-  const { localStream, endCallPeer, flipCamera } = useWebrtc({
-    otherUserId,
-    isReceiver,
-    type,
-    currentCallId,
-    setCurrentCallId,
-    authUser,
-    setCallStatus,
-    localVideoRef,
-    remoteVideoRef,
-    addMessageToChat,
-    endCallLocally,
-  });
-
-  // Play Dialing sounds on outer client initiation
+  // Initiate call if we are the caller and no active call exists
   useEffect(() => {
-    if (!isReceiver) {
-      playOutgoingBeep();
+    if (!isReceiver && otherUserId && !activeCall) {
+      initiateCall(otherUserId, type);
     }
-    return () => {
-      stopSounds();
+  }, [isReceiver, otherUserId, activeCall, initiateCall, type]);
+
+  // Ultra-reliable continuous polling and synchronization safeguard to bypass React parent/child mount delays
+  useEffect(() => {
+    const syncStreamTracks = () => {
+      const localEl = localVideoRef.current;
+      const remoteEl = remoteVideoRef.current;
+
+      if (localEl && localStream) {
+        if (localEl.srcObject !== localStream) {
+          localEl.srcObject = localStream;
+        }
+        if (localEl.paused) {
+          localEl.play().catch(() => {});
+        }
+      } else if (localEl && !localStream) {
+        localEl.srcObject = null;
+      }
+
+      if (remoteEl && remoteStream) {
+        if (remoteEl.srcObject !== remoteStream) {
+          remoteEl.srcObject = remoteStream;
+        }
+        if (remoteEl.paused) {
+          remoteEl.play().catch(err => {
+            console.warn("[WebRTC] Remote stream auto playback blocked:", err);
+          });
+        }
+        
+        // Ensure volume matches speakerState cleanly
+        if (speakerState === 0) {
+          remoteEl.volume = 0;
+          remoteEl.muted = true;
+        } else if (speakerState === 1) {
+          remoteEl.volume = 0.25;
+          remoteEl.muted = false;
+        } else {
+          remoteEl.volume = 1.0;
+          remoteEl.muted = false;
+        }
+      } else if (remoteEl && !remoteStream) {
+        remoteEl.srcObject = null;
+      }
     };
-  }, [isReceiver]);
 
-  const endCall = async () => {
-    if (!currentCallId || !supabase) {
-      endCallLocally();
-      return;
-    }
-    try {
-      await supabase.from('calls').update({ status: 'ended' } as any).eq('id', currentCallId);
-      await addMessageToChat('ended', currentCallId);
-    } catch (e) {
-      console.warn("Error updating call status to ended:", e);
-    }
-    endCallLocally();
-  };
+    syncStreamTracks();
+    const interval = setInterval(syncStreamTracks, 500);
+    return () => clearInterval(interval);
+  }, [localStream, remoteStream, speakerState]);
 
-  const toggleMute = () => {
-    setIsMuted(prev => {
-      const targetMuted = !prev;
-      if (localStream.current) {
-        const audioTrack = localStream.current.getAudioTracks()[0];
-        if (audioTrack) {
-          audioTrack.enabled = !targetMuted;
-        }
-      }
-      return targetMuted;
-    });
-  };
-
-  const toggleVideo = async () => {
-    setIsVideoOff(prev => {
-      const targetVideoOff = !prev;
-      if (localStream.current) {
-        let videoTrack = localStream.current.getVideoTracks()[0];
-        if (!videoTrack && !targetVideoOff) {
-          navigator.mediaDevices.getUserMedia({ video: true })
-            .then(videoStream => {
-              const newTrack = videoStream.getVideoTracks()[0];
-              if (newTrack && localStream.current) {
-                localStream.current.addTrack(newTrack);
-                if (localVideoRef.current) {
-                  localVideoRef.current.srcObject = localStream.current;
-                }
-                newTrack.enabled = true;
-              }
-            })
-            .catch(e => console.warn("Could not activate camera track dynamically:", e));
-        } else if (videoTrack) {
-          videoTrack.enabled = !targetVideoOff;
-        }
-      }
-      return targetVideoOff;
-    });
-  };
-
-  const toggleSpeaker = () => {
-    setSpeakerState(prev => (prev + 1) % 3);
-  };
-
-  const toggleScreenShare = async () => {
-    if (isScreenSharing) {
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getTracks().forEach(track => {
-          track.stop();
-          track.enabled = false;
-        });
-        screenStreamRef.current = null;
-      }
-      setIsScreenSharing(false);
-      // Revert remote video/local video back to standard feed
-      if (localStream.current && localVideoRef.current) {
-        localVideoRef.current.srcObject = localStream.current;
-      }
-    } else {
-      try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        screenStreamRef.current = stream;
-        setIsScreenSharing(true);
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-        
-        // Listen for when browser cancels screen sharing
-        stream.getVideoTracks()[0].onended = () => {
-          setIsScreenSharing(false);
-          screenStreamRef.current = null;
-          if (localStream.current && localVideoRef.current) {
-            localVideoRef.current.srcObject = localStream.current;
-          }
-        };
-      } catch (e) {
-        console.warn("Screen sharing failed or cancelled by user:", e);
-      }
-    }
-  };
-
-  // Regulate remote client's stream volume dynamically based on earpiece vs loudspeaker vs muted State
+  // Global touch & tap recovery listener to bypass modern mobile browser autoplay constraints
   useEffect(() => {
-    if (remoteVideoRef.current) {
-      if (speakerState === 0) {
-        remoteVideoRef.current.volume = 0;
-        remoteVideoRef.current.muted = true;
-      } else if (speakerState === 1) {
-        remoteVideoRef.current.volume = 0.25; // low speaker/receiver mode
-        remoteVideoRef.current.muted = false;
-      } else {
-        remoteVideoRef.current.volume = 1.0; // loudspeaker mode
-        remoteVideoRef.current.muted = false;
+    const forcePlayback = () => {
+      console.log("[WebRTC Gesture Recovery] Triggering safe manual play on user interaction...");
+      const localEl = localVideoRef.current;
+      const remoteEl = remoteVideoRef.current;
+
+      if (localEl && localStream && localEl.paused) {
+        localEl.play().catch(() => {});
       }
+      if (remoteEl && remoteStream && remoteEl.paused) {
+        remoteEl.play().then(() => {
+          console.log("[WebRTC Gesture Recovery] Remote audio/video started successfully!");
+        }).catch(e => console.warn("[WebRTC Gesture Recovery] Remote play failed:", e));
+      }
+    };
+
+    window.addEventListener('click', forcePlayback, { passive: true });
+    window.addEventListener('touchstart', forcePlayback, { passive: true });
+    window.addEventListener('pointerdown', forcePlayback, { passive: true });
+
+    return () => {
+      window.removeEventListener('click', forcePlayback);
+      window.removeEventListener('touchstart', forcePlayback);
+      window.removeEventListener('pointerdown', forcePlayback);
+    };
+  }, [localStream, remoteStream]);
+
+  const handleBack = () => {
+    // Instead of terminating the call on back button, we navigate to /chats.
+    // The call keeps running in the background and activates the top bar indicator.
+    navigate('/chats');
+  };
+
+  const handleEndCall = () => {
+    endCall();
+    navigate('/chats', { replace: true });
+  };
+
+  // Safe navigation if call is closed or failed
+  useEffect(() => {
+    // If we are on the call screen but there is no active call, return to chats after a brief delay
+    if (!activeCall) {
+      const t = setTimeout(() => {
+        navigate('/chats', { replace: true });
+      }, 800);
+      return () => clearTimeout(t);
     }
-  }, [speakerState]);
+
+    if (activeCall && ['ended', 'denied', 'offline', 'error', 'rejected'].includes(activeCall.status)) {
+      const t = setTimeout(() => {
+        navigate('/chats', { replace: true });
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [activeCall, navigate]);
+
+  const currentStatus = activeCall?.status || 'connecting';
+  const partnerUser = activeCall?.receiver || receiver;
+
+  // Volume controls are now consolidated under the remote stream handler above
 
   return (
-    <div className="absolute inset-0 z-[100] bg-[var(--bg-main)] flex flex-col items-center justify-between text-[var(--text-primary)] font-sans overflow-hidden select-none">
+    <div className="absolute inset-0 z-[100] bg-[var(--bg-main)] flex flex-col items-center justify-between text-[var(--text-primary)] font-sans overflow-hidden select-none animate-fade-in">
       {/* Video Streams */}
       {type === 'video' && (
         <VideoFeed 
           localVideoRef={localVideoRef}
           remoteVideoRef={remoteVideoRef}
           isVideoOff={isVideoOff}
-          callStatus={callStatus}
+          callStatus={currentStatus}
           timer={timer}
+        />
+      )}
+
+      {/* Invisible HTMLMediaElement to handle stream sink for pure voice calls */}
+      {type === 'voice' && (
+        <video
+          ref={remoteVideoRef as any}
+          autoPlay
+          className="pointer-events-none opacity-0 absolute w-[1px] h-[1px] -z-50"
+          playsInline
         />
       )}
 
       {/* Profile Details header */}
       <CallHeader 
-        receiver={receiver}
-        callStatus={callStatus}
+        receiver={partnerUser}
+        callStatus={currentStatus}
         timer={timer}
         type={type}
-        onBack={endCall}
+        onBack={handleBack}
         onFlipCamera={flipCamera}
       />
 
@@ -281,7 +219,7 @@ export default function CallScreen() {
         onToggleVideo={toggleVideo}
         onToggleSpeaker={toggleSpeaker}
         onToggleScreenShare={toggleScreenShare}
-        onEndCall={endCall}
+        onEndCall={handleEndCall}
       />
     </div>
   );

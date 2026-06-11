@@ -218,7 +218,7 @@ export default function UserProfileScreen() {
   return (
     <div className="h-full flex flex-col bg-[var(--bg-main)] overflow-hidden font-sans">
       {/* Header */}
-      <div className="w-full bg-[var(--header-bg)] px-4 h-14 flex justify-between items-center z-50 shrink-0 relative border-b border-[var(--border-color)] shadow-sm">
+      <div className="w-full bg-[var(--header-bg)] px-4 min-h-[56px] pt-safe pb-1.5 flex justify-between items-center z-50 shrink-0 relative border-b border-[var(--border-color)]/35 shadow-sm rounded-b-2xl">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="w-12 h-12 flex items-center justify-center hover:bg-white/10 rounded-full transition-colors cursor-pointer">
             <ArrowLeft size={22} className="text-[var(--header-text)]" />
@@ -240,7 +240,7 @@ export default function UserProfileScreen() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24 touch-pan-y overscroll-contain">
+      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
         <div className="px-4 pt-4">
           {/* Beautiful and Compact Profile Card (Centered Telegram Style) */}
           <div className="flex flex-col items-center text-center bg-[var(--bg-card)] py-5 px-4 rounded-2xl border border-[var(--border-color)]/60 shadow-sm mb-4 relative overflow-hidden">
