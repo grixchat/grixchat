@@ -11,7 +11,7 @@ import { useAuth } from './providers/AuthProvider';
 import { useTheme } from './contexts/ThemeContext';
 import { ErrorBoundary } from 'react-error-boundary';
 import SplashScreen from './components/SplashScreen';
-import DeveloperConsole from './components/DeveloperConsole';
+import DeveloperConsole from './features/console/DeveloperConsole';
 import { LocalDataCache } from './services/LocalDataCache';
 
 function ErrorFallback({ error }: { error: any }) {
@@ -38,7 +38,7 @@ import ProfileTab from './features/profile/ProfileTab';
 
 // Lazy Loading Features & Screens
 const ChatsTab = React.lazy(() => import('./features/chat/ChatsTab'));
-const GroupsTab = React.lazy(() => import('./features/chat/GroupsTab'));
+const StoriesTab = React.lazy(() => import('./features/stories/StoriesTab'));
 const SearchTab = React.lazy(() => import('./features/search/SearchTab'));
 const ChatLayout = React.lazy(() => import('./features/chat/ChatLayout'));
 const ChatScreen = React.lazy(() => import('./features/chat/ChatScreen'));
@@ -50,8 +50,6 @@ const MessageRequestsScreen = React.lazy(() => import('./features/chat/MessageRe
 const SearchUserScreen = React.lazy(() => import('./features/chat/SearchUserScreen'));
 const GrixAIScreen = React.lazy(() => import('./features/grixai/GrixAIScreen'));
 const ChatSettingsScreen = React.lazy(() => import('./features/chat/ChatSettingsScreen'));
-
-const FriendsScreen = React.lazy(() => import('./features/search/FriendsScreen'));
 
 const StoryWatcherScreen = React.lazy(() => import('./features/stories/StoryWatcherScreen'));
 const StoryCreationScreen = React.lazy(() => import('./features/stories/StoryCreationScreen'));
@@ -88,7 +86,6 @@ const GroupSettingsScreen = React.lazy(() => import('./features/chat/GroupSettin
 
 const LoginScreen = React.lazy(() => import('./features/auth/LoginScreen'));
 const SignupScreen = React.lazy(() => import('./features/auth/SignupScreen'));
-const ForgotPasswordScreen = React.lazy(() => import('./features/auth/ForgotPasswordScreen'));
 const VerifyEmailScreen = React.lazy(() => import('./features/auth/VerifyEmailScreen'));
 
 const PrivacyPolicyScreen = React.lazy(() => import('./features/legal/PrivacyPolicyScreen'));
@@ -516,11 +513,10 @@ export default function App() {
                       <Route path="/chats/requests" element={user ? <MessageRequestsScreen /> : <Navigate to="/login" />} />
                       <Route path="/chats/hidden" element={user ? <HideChatScreen /> : <Navigate to="/login" />} />
                       <Route path="/chats/hidden/settings" element={user ? <HideChatSettings /> : <Navigate to="/login" />} />
-                      <Route path="/groups" element={user ? <GroupsTab /> : <Navigate to="/login" />} />
+                       <Route path="/stories" element={user ? <StoriesTab /> : <Navigate to="/login" />} />
                       <Route path="/search" element={user ? <SearchTab /> : <Navigate to="/login" />} />
                       <Route path="/updates" element={<Navigate to="/search" replace />} />
                       <Route path="/channels" element={<Navigate to="/search" replace />} />
-                      <Route path="/profile/friends" element={user ? <FriendsScreen /> : <Navigate to="/login" />} />
                       <Route element={<ChatLayout />}>
                         <Route path="/chat/grix-ai" element={user ? <GrixAIScreen /> : <Navigate to="/login" />} />
                         <Route path="/chat/:id" element={user ? <ChatScreen /> : <Navigate to="/login" />} />
@@ -567,9 +563,9 @@ export default function App() {
                     <Route path="/call/:id" element={user ? <CallScreen /> : <Navigate to="/login" />} />
                     <Route path="/stories/view/:userId" element={user ? <StoryWatcherScreen /> : <Navigate to="/login" />} />
                     <Route path="/stories/create" element={user ? <StoryCreationScreen /> : <Navigate to="/login" />} />
-                    <Route path="/login" element={!user ? <LoginScreen /> : <Navigate to="/chats" replace />} />
-                    <Route path="/signup" element={!user ? <SignupScreen /> : <Navigate to="/chats" replace />} />
-                    <Route path="/forgot-password" element={!user ? <ForgotPasswordScreen /> : <Navigate to="/chats" replace />} />
+                    <Route path="/login" element={(!user || storage.getItem('grix_adding_account') === 'true') ? <LoginScreen /> : <Navigate to="/chats" replace />} />
+                    <Route path="/signup" element={(!user || storage.getItem('grix_adding_account') === 'true') ? <SignupScreen /> : <Navigate to="/chats" replace />} />
+                    <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
                     <Route path="/privacy-policy" element={<PrivacyPolicyScreen />} />
                     <Route path="/terms" element={<TermsAndConditionsScreen />} />
                     <Route path="/search-user" element={<Navigate to="/profile" replace />} />
