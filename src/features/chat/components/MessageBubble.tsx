@@ -5,7 +5,14 @@ import {
   ChevronsRight,
   CheckCheck,
   Clock,
-  Check
+  Check,
+  MapPin,
+  Compass,
+  HelpCircle,
+  CheckCircle2,
+  Circle,
+  ClipboardList,
+  Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../providers/AuthProvider.tsx';
@@ -13,6 +20,8 @@ import { formatTime } from '../../../utils/dateUtils.ts';
 import { storage } from '../../../services/StorageService.ts';
 import { isUserOnline } from '../../../utils/presence';
 import { ChatMessageReactions } from '../../../components/ChatUIComponents';
+import { supabase } from '../../../lib/supabase';
+import { LocalDataCache } from '../../../services/LocalDataCache';
 
 // Modular split files
 import { SystemMessage } from './message-bubble/SystemMessage';
@@ -187,30 +196,371 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   // Modern, ios, retro, or classic-style shapes
   let bubbleShapeClass = 'rounded-2xl';
   if (bubbleStyleSetting === 'modern') {
-    if (isSameSender) {
-      bubbleShapeClass = 'rounded-[18px]';
-    } else {
-      bubbleShapeClass = actualIsMe ? 'rounded-[18px] rounded-tr-[4px]' : 'rounded-[18px] rounded-tl-[4px]';
-    }
+    bubbleShapeClass = 'rounded-[20px]';
   } else if (bubbleStyleSetting === 'ios') {
-    if (isSameSender) {
-      bubbleShapeClass = 'rounded-[20px]';
-    } else {
-      bubbleShapeClass = actualIsMe ? 'rounded-[20px] rounded-tr-[5px]' : 'rounded-[20px] rounded-tl-[5px]';
-    }
+    bubbleShapeClass = 'rounded-[22px]';
   } else if (bubbleStyleSetting === 'retro') {
     bubbleShapeClass = 'rounded-none border-2 border-[var(--border-color)]';
   } else { 
-    if (isSameSender) {
-      bubbleShapeClass = 'rounded-xl';
-    } else {
-      bubbleShapeClass = actualIsMe ? 'rounded-xl rounded-tr-none' : 'rounded-xl rounded-tl-none';
+    bubbleShapeClass = 'rounded-2xl';
+  }
+
+  // Press-and-hold (long-press) logic for instant message selection
+  const holdTimeoutRef = React.useRef<any>(null);
+  const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
+  const wasLongPressedRef = React.useRef<boolean>(false);
+
+  const startPressTimer = (clientX: number, clientY: number) => {
+    if (isMsgDeleted) return;
+    
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+    }
+    
+    wasLongPressedRef.current = false;
+    touchStartPosRef.current = { x: clientX, y: clientY };
+
+    // Ultra-fast responsive threshold of 260ms
+    holdTimeoutRef.current = setTimeout(() => {
+      wasLongPressedRef.current = true;
+      if (window.navigator?.vibrate) {
+        try { window.navigator.vibrate(35); } catch (err) {}
+      }
+      handleMessageTap({ isLongPress: true, stopPropagation: () => {} }, msg);
+    }, 260);
+  };
+
+  const cancelPressTimer = () => {
+    if (holdTimeoutRef.current) {
+      clearTimeout(holdTimeoutRef.current);
+      holdTimeoutRef.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch) {
+      startPressTimer(touch.clientX, touch.clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch && touchStartPosRef.current) {
+      const dx = touch.clientX - touchStartPosRef.current.x;
+      const dy = touch.clientY - touchStartPosRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > 8) {
+        cancelPressTimer();
+      }
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (wasLongPressedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    cancelPressTimer();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      startPressTimer(e.clientX, e.clientY);
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (wasLongPressedRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    cancelPressTimer();
+  };
+
+  const handleMouseLeave = () => {
+    cancelPressTimer();
+  };
+
+  const handleVote = async (optionId: string) => {
+    if (!user || isMsgDeleted || !supabase) return;
+    try {
+      const poll = JSON.parse(cleanRawText);
+      const updatedOptions = poll.options.map((opt: any) => {
+        const voters = Array.isArray(opt.voters) ? opt.voters : [];
+        if (opt.id === optionId) {
+          if (voters.includes(user.id)) {
+            return { ...opt, voters: voters.filter((uid: string) => uid !== user.id) };
+          } else {
+            return { ...opt, voters: [...voters, user.id] };
+          }
+        } else {
+          if (!poll.multiple) {
+            return { ...opt, voters: voters.filter((uid: string) => uid !== user.id) };
+          }
+          return opt;
+        }
+      });
+      const updatedPoll = { ...poll, options: updatedOptions };
+      const updatedText = JSON.stringify(updatedPoll);
+
+      // 1. Optimistic Cache Update
+      const conversationId = msg.conversation_id;
+      if (conversationId) {
+        const cached = LocalDataCache.getMessages(conversationId) || [];
+        const nextMsgs = cached.map((m: any) => {
+          if (m.id === msg.id) {
+            return { ...m, text: updatedText, content: updatedText };
+          }
+          return m;
+        });
+        LocalDataCache.saveMessages(conversationId, nextMsgs);
+        LocalDataCache.notify(`messages:${conversationId}`, nextMsgs);
+      }
+
+      // 2. Database persistent write
+      await supabase
+        .from('messages')
+        .update({ text: updatedText })
+        .eq('id', msg.id);
+
+    } catch (err) {
+      console.error("Failed to vote in poll:", err);
+    }
+  };
+
+  const handleToggleTask = async () => {
+    if (!user || isMsgDeleted || !supabase) return;
+    try {
+      const task = JSON.parse(cleanRawText);
+      const updatedStatus = task.status === 'completed' ? 'pending' : 'completed';
+      const updatedTask = { ...task, status: updatedStatus };
+      const updatedText = JSON.stringify(updatedTask);
+
+      // 1. Optimistic Cache Update
+      const conversationId = msg.conversation_id;
+      if (conversationId) {
+        const cached = LocalDataCache.getMessages(conversationId) || [];
+        const nextMsgs = cached.map((m: any) => {
+          if (m.id === msg.id) {
+            return { ...m, text: updatedText, content: updatedText };
+          }
+          return m;
+        });
+        LocalDataCache.saveMessages(conversationId, nextMsgs);
+        LocalDataCache.notify(`messages:${conversationId}`, nextMsgs);
+      }
+
+      // 2. Database persistent write
+      await supabase
+        .from('messages')
+        .update({ text: updatedText })
+        .eq('id', msg.id);
+
+    } catch (err) {
+      console.error("Failed to toggle task:", err);
+    }
+  };
+
+  let renderedContent: any = cleanRawText;
+  if (isGrixAiMessage) {
+    renderedContent = cleanRawText.replace(/^🤖 Grix AI:\s*/i, '');
+  }
+
+  // Render location message beautifully
+  if (mediaType === 'location' && !isMsgDeleted) {
+    try {
+      const loc = JSON.parse(cleanRawText);
+      renderedContent = (
+        <a 
+          href={`https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mb-1 group/loc max-w-[210px] bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 rounded-2xl overflow-hidden transition-all shadow-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="h-24 bg-emerald-400/20 relative flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(#10b981_1.5px,transparent_1.5px)] [background-size:16px_16px] opacity-45" />
+            <motion.div 
+              animate={{ y: [0, -4, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className="text-emerald-500 relative z-10"
+            >
+              <MapPin size={34} className="fill-emerald-500/30 font-black" />
+            </motion.div>
+          </div>
+          <div className="p-3">
+            <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
+              <Compass size={12} className="animate-spin-slow text-emerald-500" />
+              <span>Location shared</span>
+            </p>
+            <p className="text-[12.5px] font-bold text-zinc-100 truncate mt-0.5">
+              {loc.name || 'Shared Location'}
+            </p>
+            <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+              {loc.latitude.toFixed(5)}, {loc.longitude.toFixed(5)}
+            </p>
+          </div>
+        </a>
+      );
+    } catch (err) {
+      console.warn("Could not parse location JSON:", err);
     }
   }
 
-  let renderedContent = cleanRawText;
-  if (isGrixAiMessage) {
-    renderedContent = cleanRawText.replace(/^🤖 Grix AI:\s*/i, '');
+  // Render interactive poll widget beautifully
+  if (mediaType === 'poll' && !isMsgDeleted) {
+    try {
+      const poll = JSON.parse(cleanRawText);
+      const options = poll.options || [];
+      const totalVotes = options.reduce((sum: number, opt: any) => sum + (Array.isArray(opt.voters) ? opt.voters.length : 0), 0);
+
+      renderedContent = (
+        <div 
+          className="flex flex-col gap-2 min-w-[230px] max-w-[280px] p-2 bg-black/15 dark:bg-black/25 rounded-2xl border border-white/5 text-zinc-200 select-none cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Question title */}
+          <div className="flex items-start gap-2 mb-1.5 pl-0.5">
+            <div className="w-6.5 h-6.5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 mt-0.5 border border-amber-500/10">
+              <HelpCircle size={13} />
+            </div>
+            <div>
+              <p className="text-[13px] font-black text-zinc-100 leading-snug">
+                {poll.question}
+              </p>
+              <p className="text-[8.5px] font-semibold text-zinc-500 uppercase tracking-wider mt-0.5">
+                {poll.multiple ? 'Multiple Choices Allowed' : 'Single Option Select'}
+              </p>
+            </div>
+          </div>
+
+          {/* Options List */}
+          <div className="space-y-2">
+            {options.map((opt: any) => {
+              const voters = Array.isArray(opt.voters) ? opt.voters : [];
+              const userVoted = voters.includes(user?.id);
+              const optVotesCount = voters.length;
+              const percentage = totalVotes > 0 ? Math.round((optVotesCount / totalVotes) * 100) : 0;
+
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => handleVote(opt.id)}
+                  className="w-full relative py-2.5 px-3 rounded-xl border border-white/5 hover:border-white/10 text-left bg-[#1e2022]/45 hover:bg-[#1e2022]/70 active:scale-[0.99] transition-all flex items-center justify-between overflow-hidden cursor-pointer select-none border-none outline-none text-white font-sans"
+                >
+                  {/* Dynamic background progress bar slider */}
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percentage}%` }}
+                    transition={{ type: "spring", stiffness: 45, damping: 15 }}
+                    className="absolute inset-y-0 left-0 bg-[var(--primary)]/15 z-0 pointer-events-none rounded-r-lg"
+                  />
+
+                  {/* Text contents above progress layer */}
+                  <div className="flex items-center gap-2.5 relative z-10 shrink-1 min-w-0 pr-2">
+                    {userVoted ? (
+                      <CheckCircle2 size={16} className="text-[#0494f4] shrink-0" />
+                    ) : (
+                      <Circle size={16} className="text-zinc-600 hover:text-zinc-500 shrink-0" />
+                    )}
+                    <span className={`text-[12px] truncate ${userVoted ? 'font-black text-[#0494f4]' : 'font-bold text-zinc-300'}`}>
+                      {opt.text}
+                    </span>
+                  </div>
+
+                  {/* Vote Count / Percentage display */}
+                  <div className="flex items-center gap-1.5 relative z-10 shrink-0 text-[10.5px]">
+                    <span className="font-extrabold text-zinc-400">
+                      {percentage}%
+                    </span>
+                    <span className="text-[9px] font-medium text-zinc-500 whitespace-nowrap">
+                      ({optVotesCount})
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* total votes count bar */}
+          <div className="flex items-center justify-between text-[9px] text-zinc-500 font-extrabold tracking-wider uppercase pt-1.5 px-1 border-t border-white/5 mt-1 leading-none select-none">
+            <span>Poll Summary</span>
+            <span className="text-[#0494f4]">{totalVotes} {totalVotes === 1 ? 'Vote' : 'Votes'}</span>
+          </div>
+        </div>
+      );
+    } catch (err) {
+      console.warn("Could not parse poll JSON:", err);
+    }
+  }
+
+  // Render interactive task widget beautifully
+  if (mediaType === 'task' && !isMsgDeleted) {
+    try {
+      const task = JSON.parse(cleanRawText);
+      const isCompleted = task.status === 'completed';
+
+      renderedContent = (
+        <div 
+          className="flex flex-col gap-2 min-w-[230px] max-w-[280px] p-3 bg-black/15 dark:bg-black/25 rounded-2xl border border-white/5 text-zinc-200 select-none cursor-default"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleTask();
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-start gap-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 border ${
+              isCompleted 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/15' 
+                : 'bg-pink-500/10 text-pink-400 border-pink-500/15'
+            }`}>
+              <ClipboardList size={15} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={`text-[13px] font-black leading-snug transition-all ${
+                isCompleted ? 'line-through text-zinc-500' : 'text-zinc-100'
+              }`}>
+                {task.title}
+              </p>
+              {task.description && (
+                <p className="text-[11px] font-medium text-zinc-400 mt-1 line-clamp-2">
+                  {task.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Details Row */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 pt-2 border-t border-white/5">
+            {task.assignee && (
+              <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-300">
+                <span className="text-zinc-500 font-medium">For:</span>
+                <span className="text-zinc-100 truncate max-w-[80px]">{task.assignee}</span>
+              </div>
+            )}
+            
+            {task.dueDate && (
+              <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg text-[10px] font-bold text-zinc-300">
+                <Calendar size={10} className="text-zinc-500" />
+                <span className="text-zinc-100">{task.dueDate}</span>
+              </div>
+            )}
+
+            <div className={`ml-auto flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${
+              isCompleted 
+                ? 'bg-emerald-500/15 text-emerald-400' 
+                : 'bg-pink-500/15 text-pink-400'
+            }`}>
+              {isCompleted ? 'Completed' : 'Pending'}
+            </div>
+          </div>
+        </div>
+      );
+    } catch (err) {
+      console.warn("Could not parse task JSON:", err);
+    }
   }
 
   const hasReactions = msg.reactions && Object.keys(msg.reactions).length > 0 && !isMsgDeleted;
@@ -294,11 +644,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
       
       <div className={`relative group max-w-[85%] lg:max-w-[70%] min-w-0 flex items-center gap-2 ${isHighlighted ? 'z-10' : ''}`}>
-        {!isSameSender && bubbleStyleSetting === 'whatsapp' && (
-          <div className={`absolute top-0 w-2 h-2 ${actualIsMe ? '-right-1.5 bg-[var(--bubble-own)]' : '-left-1.5 bg-[var(--bubble-other)]'}`} 
-               style={{ clipPath: actualIsMe ? 'polygon(0 0, 0 100%, 100% 0)' : 'polygon(100% 0, 100% 100%, 0 0)' }}>
-          </div>
-        )}
 
         {/* Smooth WhatsApp/Telegram sliding background reply indicator */}
         <motion.div 
@@ -339,18 +684,31 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             setSwipeActive(false);
             hasVibratedRef.current = false;
           }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
           onClick={(e) => {
             if (isMsgDeleted) return;
             e.stopPropagation();
+            if (wasLongPressedRef.current) {
+              wasLongPressedRef.current = false;
+              return;
+            }
             handleMessageTap(e as any, msg);
           }}
           onContextMenu={(e) => {
             e.preventDefault();
             if (isMsgDeleted) return;
             e.stopPropagation();
+            if (wasLongPressedRef.current) {
+              wasLongPressedRef.current = false;
+              return;
+            }
             handleMessageTap(e as any, msg);
           }}
-          whileTap={{ scale: 0.992 }}
           animate={isHighlighted ? { 
             backgroundColor: actualIsMe ? 'var(--bubble-own)' : 'var(--bubble-other)',
             scale: [1, 1.02, 1],

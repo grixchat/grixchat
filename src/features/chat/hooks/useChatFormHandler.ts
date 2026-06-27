@@ -1,6 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { aiService } from '../../../services/AIService';
+import { LocalDataCache } from '../../../services/LocalDataCache';
+
+// Helper to convert File to base64 for persistent drafts
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
+// Helper to convert base64 to File
+const base64ToFile = (base64String: string, filename: string, mimeType: string): File => {
+  const arr = base64String.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || mimeType;
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
 
 interface UseChatFormHandlerProps {
   chatId: string;
@@ -40,6 +64,124 @@ export function useChatFormHandler({
   const [isUploading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
 
+  const isInitializingRef = useRef<string | null>(null);
+
+  // Load draft on mount / conversation switch
+  useEffect(() => {
+    if (!receiverId) return;
+
+    // Mark that we are initializing this receiver's draft to suppress immediate save cycle
+    isInitializingRef.current = receiverId;
+
+    const draft = LocalDataCache.get<any>(`draft_${receiverId}`);
+    if (draft) {
+      setNewMessage(draft.text || '');
+      if (draft.files && Array.isArray(draft.files) && draft.files.length > 0) {
+        const reconstructed: File[] = [];
+        const reconstructedUrls: string[] = [];
+        draft.files.forEach((fileObj: any) => {
+          try {
+            const file = base64ToFile(fileObj.base64, fileObj.name, fileObj.type);
+            reconstructed.push(file);
+            reconstructedUrls.push(URL.createObjectURL(file));
+          } catch (e) {
+            console.error("Error of draft file recreation:", e);
+          }
+        });
+        setSelectedFiles(reconstructed);
+        setFilePreviewUrls(reconstructedUrls);
+      } else {
+        setSelectedFiles([]);
+        setFilePreviewUrls([]);
+      }
+    } else {
+      setNewMessage('');
+      setSelectedFiles([]);
+      setFilePreviewUrls([]);
+    }
+
+    // Reset initialization guard after rendering cycle has settled
+    const timer = setTimeout(() => {
+      isInitializingRef.current = null;
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [receiverId]);
+
+  // Save draft status when input variables change
+  useEffect(() => {
+    if (!receiverId) return;
+
+    // Check if initialization is active
+    if (isInitializingRef.current === receiverId) {
+      return;
+    }
+
+    // Do not save drafts while editing an existing message
+    if (editingMessage) {
+      return;
+    }
+
+    // Save text portion synchronously RIGHT AWAY to guarantee no text loss ever!
+    const trimmedText = newMessage.trim();
+    const existing = LocalDataCache.get<any>(`draft_${receiverId}`);
+    
+    // Save immediate text state first (merging with existing files if they exist)
+    if (!trimmedText && selectedFiles.length === 0) {
+      if (existing) {
+        LocalDataCache.remove(`draft_${receiverId}`);
+        LocalDataCache.notify(`draft_status_${receiverId}`, null);
+      }
+    } else {
+      const tempDraft = {
+        text: newMessage,
+        files: existing?.files || [] // retain previously saved serialized files
+      };
+      LocalDataCache.set(`draft_${receiverId}`, tempDraft);
+      LocalDataCache.notify(`draft_status_${receiverId}`, tempDraft);
+    }
+
+    let active = true;
+
+    // File base64 serialization handles asynchronously
+    if (selectedFiles.length > 0) {
+      const performSaveFiles = async () => {
+        const filePromises = selectedFiles.map(async (file) => {
+          try {
+            const b64 = await fileToBase64(file);
+            return {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              base64: b64,
+            };
+          } catch (err) {
+            console.error("Error converting file to base64 for draft:", err);
+            return null;
+          }
+        });
+
+        const resolvedFiles = (await Promise.all(filePromises)).filter(Boolean);
+
+        if (!active) return;
+
+        const currentDraft = LocalDataCache.get<any>(`draft_${receiverId}`) || { text: newMessage };
+        const nextDraft = {
+          ...currentDraft,
+          files: resolvedFiles
+        };
+        LocalDataCache.set(`draft_${receiverId}`, nextDraft);
+        LocalDataCache.notify(`draft_status_${receiverId}`, nextDraft);
+      };
+
+      performSaveFiles();
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [newMessage, selectedFiles, receiverId, editingMessage]);
+
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0 || !user) return;
@@ -74,6 +216,10 @@ export function useChatFormHandler({
     setEditingMessage(null);
     setSelectedFiles([]);
     setFilePreviewUrls([]);
+    
+    // Clear draft from storage immediately upon sending
+    LocalDataCache.remove(`draft_${receiverId}`);
+    LocalDataCache.notify(`draft_status_${receiverId}`, null);
     
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setIsSending(true);
@@ -215,9 +361,8 @@ export function useChatFormHandler({
     setReplyingTo(msg);
     if (msg) {
       setEditingMessage(null);
-      setNewMessage('');
     }
-  }, [setEditingMessage, setNewMessage]);
+  }, [setEditingMessage]);
 
   const startEdit = useCallback((msg: any) => {
     setEditingMessage(msg);
