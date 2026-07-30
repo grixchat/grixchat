@@ -219,32 +219,45 @@ export default function SearchTab() {
     }
   };
 
+  const AVATAR_COLORS = ['#E17076','#7BC862','#65AADD','#E78A2F','#956FE4','#3CAFE5','#F57244','#49A0E9'];
+  const getAvatarColor = (name: string) => AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
   const renderUserProfileRow = (profile: UserProfile, isFriend: boolean = false) => {
+    const avatarInitial = (profile.fullName || profile.username || '?')[0].toUpperCase();
+    
     return (
       <div 
         key={profile.uid}
         onClick={() => navigate(`/user/${profile.uid}`)}
-        className="flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-all duration-205 group cursor-pointer select-none border-b border-[var(--border-color)]/5 last:border-b-0 border-l-[4px] border-l-transparent"
+        className="relative flex items-center gap-[12px] px-[12px] py-[8px] min-h-[72px] hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-colors duration-200 group cursor-pointer select-none"
       >
-        <Avatar 
-          url={profile.photoURL} 
-          type="direct" 
-          name={profile.fullName || profile.username || 'GrixUser'} 
-          isOnline={profile.isOnline}
-        />
+        <div className="relative shrink-0 w-[54px] h-[54px]">
+          {profile.photoURL && profile.photoURL !== '' && profile.photoURL !== 'https://cdn-icons-png.flaticon.com/512/149/149071.png' ? (
+            <img src={profile.photoURL} alt={profile.fullName} className="w-full h-full rounded-full object-cover" />
+          ) : (
+            <div 
+              className="w-full h-full rounded-full flex items-center justify-center text-white"
+              style={{ backgroundColor: getAvatarColor(profile.fullName || profile.username), fontSize: '22px', fontWeight: 500 }}
+            >
+              {avatarInitial}
+            </div>
+          )}
+          
+          {profile.isOnline && (
+            <div className="absolute bottom-0 right-0 w-[10px] h-[10px] rounded-full bg-[#4CAF50] border-2 border-[var(--bg-card)] z-10" />
+          )}
+        </div>
         
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <h3 className="text-[14.5px] truncate font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
+        <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+          <h3 className="text-[16px] font-medium text-[var(--text-primary)] truncate mb-[2px]">
             {profile.fullName || profile.username || 'GrixChat User'}
           </h3>
-          <p className="text-[13px] text-[var(--text-secondary)] opacity-75 mt-0.5 font-medium">
+          <p className="text-[15px] text-[var(--text-secondary)] truncate">
             @{profile.username || 'username'}
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-15 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all duration-200" />
-        </div>
+        <div className="absolute bottom-0 left-[78px] right-0 h-[0.5px] bg-[var(--border-color)]/25" />
       </div>
     );
   };
@@ -309,24 +322,22 @@ export default function SearchTab() {
               {/* Only show requests folder if not browsing search keyword results */}
               <div 
                 onClick={() => navigate('/chats/requests')}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-all duration-205 border-b border-[var(--border-color)]/5 group cursor-pointer select-none border-l-[4px] border-l-transparent"
+                className="relative flex items-center gap-[12px] px-[12px] py-[8px] min-h-[72px] hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-colors duration-200 group cursor-pointer select-none"
               >
-                <div className="relative shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-[#0494f4]/10 dark:bg-zinc-800/60 flex items-center justify-center text-[#0494f4] group-hover:scale-[1.02] transition-transform border border-[var(--border-color)]/15">
-                    <Users size={19} className="text-[#0494f4]" />
+                <div className="relative shrink-0 w-[54px] h-[54px]">
+                  <div className="w-full h-full rounded-full bg-[#0494f4]/10 dark:bg-zinc-800/60 flex items-center justify-center text-[#0494f4] group-hover:scale-[1.02] transition-transform border border-[var(--border-color)]/15">
+                    <Users size={22} className="text-[#0494f4]" />
                   </div>
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <h3 className="text-[14.5px] truncate font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
+                <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                  <h3 className="text-[16px] font-medium text-[var(--text-primary)] truncate mb-[2px]">
                     Pending Requests
                   </h3>
-                  <p className="text-[13px] truncate text-[var(--text-secondary)] mt-0.5 font-medium opacity-75">
+                  <p className="text-[15px] text-[var(--text-secondary)] truncate">
                     Incoming friend requests
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-15 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all duration-200" />
-                </div>
+                <div className="absolute bottom-0 left-[78px] right-0 h-[0.5px] bg-[var(--border-color)]/25" />
               </div>
 
               {contactsLoading ? (

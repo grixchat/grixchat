@@ -68,52 +68,68 @@ export const CallsHistoryList: React.FC<CallsHistoryListProps> = ({
     );
   }
 
+  const AVATAR_COLORS = ['#E17076','#7BC862','#65AADD','#E78A2F','#956FE4','#3CAFE5','#F57244','#49A0E9'];
+  const getAvatarColor = (name: string) => AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
   return (
     <div className="flex flex-col bg-[var(--bg-card)]">
       {calls.map((call, index) => {
         const isMissed = call.isMissed;
+        const avatarInitial = (call.user || '?')[0].toUpperCase();
+
         return (
           <div 
             key={call.id}
-            className="flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-all border-b border-[var(--border-color)]/5 last:border-b-0 group cursor-pointer select-none border-l-[4px] border-l-transparent"
+            className="relative flex items-center gap-[12px] px-[12px] py-[8px] min-h-[72px] hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-colors duration-200 cursor-pointer select-none group"
           >
-            <Avatar url={call.avatar} name={call.user} />
+            <div className="relative shrink-0 w-[54px] h-[54px]">
+              {call.avatar && call.avatar !== '' && call.avatar !== 'https://cdn-icons-png.flaticon.com/512/149/149071.png' ? (
+                <img src={call.avatar} alt={call.user} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <div 
+                  className="w-full h-full rounded-full flex items-center justify-center text-white"
+                  style={{ backgroundColor: getAvatarColor(call.user), fontSize: '22px', fontWeight: 500 }}
+                >
+                  {avatarInitial}
+                </div>
+              )}
+            </div>
             
-            {/* Detailed Row matching ChatUserList layout */}
-            <div className="flex-1 min-w-0 flex items-center justify-between">
-              <div className="min-w-0 pr-2">
-                <h4 className={`text-[14.5px] truncate font-semibold ${isMissed ? 'text-rose-500' : 'text-[var(--text-primary)]'}`}>
+            {/* Detailed Row matching Telegram layout */}
+            <div className="flex-1 min-w-0 flex items-center justify-between h-full pt-[1px]">
+              <div className="min-w-0 pr-2 flex flex-col justify-center">
+                <h4 className={`text-[16px] truncate font-medium mb-[2px] ${isMissed ? 'text-rose-500' : 'text-[var(--text-primary)]'}`}>
                   {call.user}
                 </h4>
                 
-                <div className="flex items-center gap-1.5 mt-0.5 select-none animate-fade-in">
+                <div className="flex items-center gap-1.5 select-none animate-fade-in">
                   {call.isMissed ? (
                     call.isIncoming ? (
-                      <ArrowDownLeft size={13} strokeWidth={3} className="text-rose-500 shrink-0" />
+                      <ArrowDownLeft size={14} strokeWidth={3} className="text-rose-500 shrink-0" />
                     ) : (
-                      <ArrowUpRight size={13} strokeWidth={3} className="text-amber-500 shrink-0" />
+                      <ArrowUpRight size={14} strokeWidth={3} className="text-amber-500 shrink-0" />
                     )
                   ) : call.isIncoming ? (
-                    <ArrowDownLeft size={13} strokeWidth={3} className="text-emerald-500 shrink-0" />
+                    <ArrowDownLeft size={14} strokeWidth={3} className="text-emerald-500 shrink-0" />
                   ) : (
-                    <ArrowUpRight size={13} strokeWidth={3} className="text-[#0494f4] shrink-0" />
+                    <ArrowUpRight size={14} strokeWidth={3} className="text-[#0494f4] shrink-0" />
                   )}
                   
-                  <span className="text-[13px] text-[var(--text-secondary)] opacity-75">
-                    {call.type === 'video' ? 'Video' : 'Voice'} Call · {call.time}
+                  <span className="text-[15px] text-[var(--text-secondary)]">
+                    {call.type === 'video' ? 'Video' : 'Voice'} · {call.time}
                   </span>
                 </div>
               </div>
  
-              {/* Action Button styled cleanly on the right with official Avatar proportions and transparent color */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* Action Button */}
+              <div className="flex items-center justify-center shrink-0 w-12 h-12">
                 <button 
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onCall(call.otherUserId, call.type === 'video' ? 'video' : 'voice');
                   }}
-                  className="w-12 h-12 rounded-full flex items-center justify-center bg-transparent text-[#0494f4] hover:bg-[var(--border-color)]/10 active:scale-95 transition-all duration-150 cursor-pointer shrink-0"
+                  className="w-full h-full rounded-full flex items-center justify-center bg-transparent text-[#0494f4] hover:bg-[var(--border-color)]/10 active:scale-95 transition-all duration-150 cursor-pointer"
                   title={call.type === 'video' ? "Video Call" : "Voice Call"}
                 >
                   {call.type === 'video' ? (
@@ -124,6 +140,8 @@ export const CallsHistoryList: React.FC<CallsHistoryListProps> = ({
                 </button>
               </div>
             </div>
+
+            <div className="absolute bottom-0 left-[78px] right-0 h-[0.5px] bg-[var(--border-color)]/25" />
           </div>
         );
       })}

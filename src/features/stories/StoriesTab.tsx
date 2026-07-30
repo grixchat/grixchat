@@ -140,6 +140,10 @@ export default function StoriesTab() {
 
   const myStoryName = userData?.fullName || authUser?.email?.split('@')[0] || "My Story";
 
+  const AVATAR_COLORS = ['#E17076','#7BC862','#65AADD','#E78A2F','#956FE4','#3CAFE5','#F57244','#49A0E9'];
+  const getAvatarColor = (name: string) => AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+  const myAvatarInitial = (myStoryName)[0].toUpperCase();
+
   return (
     <div className="h-full flex flex-col bg-[var(--bg-card)] overflow-hidden animate-fade-in touch-pan-y font-sans relative">
       <div className="flex-1 overflow-y-auto no-scrollbar pb-32 bg-[var(--bg-card)]">
@@ -164,36 +168,34 @@ export default function StoriesTab() {
                 navigate('/stories/create');
               }
             }}
-            className="flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-all duration-205 group cursor-pointer select-none border-b border-[var(--border-color)]/5 last:border-b-0 border-l-[4px] border-l-transparent"
+            className="relative flex items-center gap-[12px] px-[12px] py-[8px] min-h-[72px] hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-colors duration-200 group cursor-pointer select-none"
           >
             {/* Left: Avatar with dynamic Ring or Plus Overlay */}
-            <div className="relative shrink-0">
-              {myStoriesGroup ? (
-                <Avatar 
-                  url={userData?.photoURL} 
-                  type="direct" 
-                  name={myStoryName} 
-                />
+            <div className="relative shrink-0 w-[54px] h-[54px]">
+              {userData?.photoURL && userData.photoURL !== '' && userData.photoURL !== 'https://cdn-icons-png.flaticon.com/512/149/149071.png' ? (
+                <img src={userData.photoURL} alt={myStoryName} className="w-full h-full rounded-full object-cover" />
               ) : (
-                <div className="relative">
-                  <Avatar 
-                    url={userData?.photoURL} 
-                    type="direct" 
-                    name={myStoryName} 
-                  />
-                  <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-[#0494f4] text-white rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] shadow-md">
-                    <Plus size={11} strokeWidth={3.5} />
-                  </div>
+                <div 
+                  className="w-full h-full rounded-full flex items-center justify-center text-white"
+                  style={{ backgroundColor: getAvatarColor(myStoryName), fontSize: '22px', fontWeight: 500 }}
+                >
+                  {myAvatarInitial}
+                </div>
+              )}
+              
+              {!myStoriesGroup && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-[20px] h-[20px] bg-[#0494f4] text-white rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] shadow-md">
+                  <Plus size={12} strokeWidth={3.5} />
                 </div>
               )}
             </div>
 
             {/* Middle: Details */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <h3 className="text-[14.5px] truncate font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
+            <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+              <h3 className="text-[16px] truncate font-medium text-[var(--text-primary)] mb-[2px]">
                 {myStoryName}
               </h3>
-              <p className="text-[13px] text-[var(--text-secondary)] opacity-75 mt-0.5 font-medium">
+              <p className="text-[15px] text-[var(--text-secondary)] truncate">
                 {myStoriesGroup 
                   ? formatStoryTime(myStoriesGroup.stories[0].created_at)
                   : 'Tap to publish a status update'
@@ -203,6 +205,8 @@ export default function StoriesTab() {
 
             {/* Right: navigation chevron */}
             <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-15 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
+            
+            <div className="absolute bottom-0 left-[78px] right-0 h-[0.5px] bg-[var(--border-color)]/25" />
           </div>
 
           {/* FRIENDS' STATUSES (RECENT UPDATES) */}
@@ -216,35 +220,45 @@ export default function StoriesTab() {
               <p className="text-xs text-[var(--text-secondary)] opacity-75 italic">No shared status updates from other friends yet.</p>
             </div>
           ) : (
-            otherStoriesGroups.map(group => (
-              <div 
-                key={group.userId}
-                onClick={() => navigate(`/stories/view/${group.userId}`)}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-all duration-205 group cursor-pointer select-none border-b border-[var(--border-color)]/5 last:border-b-0 border-l-[4px] border-l-transparent"
-              >
-                {/* Left: Avatar with brand themed ring */}
-                <div className="relative shrink-0">
-                  <Avatar 
-                    url={group.photoURL} 
-                    type="direct" 
-                    name={group.username} 
-                  />
-                </div>
+            otherStoriesGroups.map(group => {
+              const groupInitial = (group.fullName || group.username || '?')[0].toUpperCase();
+              return (
+                <div 
+                  key={group.userId}
+                  onClick={() => navigate(`/stories/view/${group.userId}`)}
+                  className="relative flex items-center gap-[12px] px-[12px] py-[8px] min-h-[72px] hover:bg-[var(--border-color)]/5 active:bg-[var(--border-color)]/10 transition-colors duration-200 group cursor-pointer select-none"
+                >
+                  {/* Left: Avatar with brand themed ring */}
+                  <div className="relative shrink-0 w-[54px] h-[54px]">
+                    {group.photoURL && group.photoURL !== '' && group.photoURL !== 'https://cdn-icons-png.flaticon.com/512/149/149071.png' ? (
+                      <img src={group.photoURL} alt={group.username} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <div 
+                        className="w-full h-full rounded-full flex items-center justify-center text-white"
+                        style={{ backgroundColor: getAvatarColor(group.fullName || group.username), fontSize: '22px', fontWeight: 500 }}
+                      >
+                        {groupInitial}
+                      </div>
+                    )}
+                  </div>
 
-                {/* Middle: Details */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <h3 className="text-[14.5px] truncate font-semibold text-[var(--text-primary)] group-hover:text-[var(--primary)] transition-colors">
-                    {group.fullName || group.username}
-                  </h3>
-                  <p className="text-[13px] text-[var(--text-secondary)] opacity-75 mt-0.5 font-medium">
-                    {formatStoryTime(group.stories[0].created_at)}
-                  </p>
-                </div>
+                  {/* Middle: Details */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
+                    <h3 className="text-[16px] truncate font-medium text-[var(--text-primary)] mb-[2px]">
+                      {group.fullName || group.username}
+                    </h3>
+                    <p className="text-[15px] text-[var(--text-secondary)] truncate">
+                      {formatStoryTime(group.stories[0].created_at)}
+                    </p>
+                  </div>
 
-                {/* Right: navigation chevron */}
-                <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-15 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
-              </div>
-            ))
+                  {/* Right: navigation chevron */}
+                  <ChevronRight size={16} className="text-[var(--text-secondary)] opacity-15 group-hover:opacity-60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
+                  
+                  <div className="absolute bottom-0 left-[78px] right-0 h-[0.5px] bg-[var(--border-color)]/25" />
+                </div>
+              );
+            })
           )}
         </div>
       </div>
